@@ -265,6 +265,10 @@ python scripts/run_eval.py --backend mock --top_k 3
 
 ## Gradio 页面
 
+页面示例：
+
+![Gradio demo](docs/images/gradio-demo.png)
+
 启动：
 
 ```bash
