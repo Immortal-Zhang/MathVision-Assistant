@@ -97,7 +97,7 @@ class Evaluator:
                 "",
                 f"逐样本结果已保存到 `{csv_path}`。",
                 "",
-                "说明：mock backend 是规则型本地后端，用于验证工程链路；真实模型结果请使用 SmolVLM 或 Qwen2.5-VL 重新评测。",
+                "说明：不同 backend 的结果会有差异；建议结合逐样本 CSV 查看错误样本。",
             ]
         )
         return "\n".join(lines) + "\n"
