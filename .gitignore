@@ -1,0 +1,29 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+
+# Local generated data
+data/outputs/
+
+# Evaluation outputs
+reports/**/*.csv
+reports/**/*.md
+!reports/README.md
+
+# Model / training artifacts
+checkpoints/
+*.safetensors
+*.pt
+*.pth
+*.bin
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+outputs/
+wandb/

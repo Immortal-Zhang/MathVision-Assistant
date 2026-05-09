@@ -1,0 +1,21 @@
+project:
+  name: MathVision-Assistant
+  language: zh-CN
+
+data:
+  demo_dir: data/demo
+  images_dir: data/demo/images
+  qa_file: data/demo/qa.jsonl
+  knowledge_base_file: data/demo/knowledge_base.jsonl
+  index_file: data/outputs/index.pkl
+
+retrieval:
+  top_k: 3
+
+backend:
+  default: mock
+  smolvlm_model: HuggingFaceTB/SmolVLM-500M-Instruct
+  qwen_vl_model: Qwen/Qwen2.5-VL-3B-Instruct
+
+generation:
+  max_new_tokens: 256

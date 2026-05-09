@@ -1,0 +1,14 @@
+{"id": "kb_line_slope_01", "title": "Line slope y=2x+1", "content": "For a line y = mx + b, the slope is m. In y=2x+1, m=2.", "source_image": "data/demo/images/line_slope_01.png"}
+{"id": "kb_parabola_vertex_01", "title": "Parabola vertex y=(x-1)^2", "content": "The graph y=(x-1)^2 has its vertex at (1,0).", "source_image": "data/demo/images/parabola_vertex_01.png"}
+{"id": "kb_bar_chart_max_01", "title": "Bar chart maximum category", "content": "The bars A, B, C have values 3, 5, and 8. Category C is maximum.", "source_image": "data/demo/images/bar_chart_max_01.png"}
+{"id": "kb_line_chart_trend_01", "title": "Line chart increasing trend", "content": "The plotted values rise from left to right, so the trend is overall increasing.", "source_image": "data/demo/images/line_chart_trend_01.png"}
+{"id": "kb_triangle_angle_01", "title": "Triangle angle sum", "content": "Angles in a triangle sum to 180 degrees, so 180-50-60=70.", "source_image": "data/demo/images/triangle_angle_01.png"}
+{"id": "kb_circle_radius_01", "title": "Circle area with radius 3", "content": "Circle area is pi*r^2. With radius 3, the area is 9*pi.", "source_image": "data/demo/images/circle_radius_01.png"}
+{"id": "kb_formula_derivative_01", "title": "Derivative of x squared", "content": "Using the power rule, d/dx x^2 = 2x.", "source_image": "data/demo/images/formula_derivative_01.png"}
+{"id": "kb_coordinate_point_01", "title": "Coordinate point reading", "content": "The marked point is located at x=3 and y=2, so its coordinate is (3,2).", "source_image": "data/demo/images/coordinate_point_01.png"}
+{"id": "kb_histogram_total_01", "title": "Histogram total count", "content": "The three bar values are 4, 6, and 8. Their sum is 18.", "source_image": "data/demo/images/histogram_total_01.png"}
+{"id": "kb_rectangle_area_01", "title": "Rectangle area", "content": "A rectangle with length 6 and width 4 has area 6*4=24.", "source_image": "data/demo/images/rectangle_area_01.png"}
+{"id": "kb_fraction_simplify_01", "title": "Fraction simplification", "content": "The fraction 6/8 can be simplified by dividing numerator and denominator by 2 to get 3/4.", "source_image": "data/demo/images/fraction_simplify_01.png"}
+{"id": "kb_scatter_correlation_01", "title": "Scatter plot correlation", "content": "The points move upward as x increases, indicating positive correlation.", "source_image": "data/demo/images/scatter_correlation_01.png"}
+{"id": "kb_sine_period_01", "title": "Sine curve period", "content": "The standard sine function sin(x) has period 2*pi.", "source_image": "data/demo/images/sine_period_01.png"}
+{"id": "kb_pie_chart_share_01", "title": "Pie chart largest share", "content": "The largest pie slice is Blue and it covers 50 percent.", "source_image": "data/demo/images/pie_chart_share_01.png"}

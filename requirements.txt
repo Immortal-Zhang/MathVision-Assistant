@@ -1,0 +1,17 @@
+numpy
+pandas
+pillow
+matplotlib
+scikit-learn
+pyyaml
+tqdm
+gradio
+fastapi==0.112.4
+starlette==0.38.6
+pydantic==2.10.6
+pytest
+torch
+transformers
+accelerate
+sentencepiece
+protobuf
