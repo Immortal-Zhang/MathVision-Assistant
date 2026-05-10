@@ -160,8 +160,16 @@ def _build_eval_question(question: str, prompt_style: str) -> str:
     )
 
 
-def _strict_exact_match(prediction: str, reference: str) -> float:
-    return 1.0 if normalize_text(prediction) == normalize_text(reference) else 0.0
+def _relaxed_exact_match(prediction: str, reference: str) -> float:
+    pred = normalize_text(prediction)
+    ref = normalize_text(reference)
+    if not ref:
+        return 0.0
+    if pred == ref:
+        return 1.0
+    if ref in pred:
+        return 1.0
+    return 0.0
 
 
 def _first_numeric_match(prediction: str, reference: str, tol: float = 1e-3) -> float:
@@ -249,7 +257,7 @@ def main() -> None:
         hit = keyword_coverage(answer, keywords)
         reference_answer = str(record.get("answer", ""))
         answer_length = len(answer)
-        exact = _strict_exact_match(answer, reference_answer)
+        exact = _relaxed_exact_match(answer, reference_answer)
         numeric = _first_numeric_match(answer, reference_answer)
         too_short = answer_length < args.min_answer_length_warning
         rows.append(

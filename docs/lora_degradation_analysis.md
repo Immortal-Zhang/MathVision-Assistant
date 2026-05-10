@@ -60,7 +60,6 @@
 ```bash
 cd /root/autodl-tmp/projects/MathVision-Assistant
 git pull
-source .venv/bin/activate
 
 MODEL_NAME=/root/autodl-tmp/models/Qwen/Qwen2___5-VL-3B-Instruct \
 RUN_MODE=full \
@@ -80,7 +79,7 @@ RUN_MODE=smoke bash scripts/run_qwen_lora_gpu.sh
 - LoRA 的 `too_short_rate` 是否低于上一轮短答退化现象。
 - LoRA 的 `average_answer_length` 是否不再异常接近 0。
 - LoRA 的 `keyword_coverage` 是否不再明显低于 base。
-- `exact_match` 和 `numeric_match` 是否稳定或有所改善。
+- `exact_match` 和 `numeric_match` 是否稳定或有所改善；解释型回答下不要单独依赖 exact match。
 - `metrics/bad_cases/bad_cases.md` 中是否仍大量出现“LoRA 输出过短”。
 
 本轮结果显示短答率、数值匹配和关键词覆盖已有改善，但这只能说明当前合成 demo 流程更合理，不能直接说明模型在正式 benchmark 上提升。

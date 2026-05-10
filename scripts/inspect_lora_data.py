@@ -13,6 +13,17 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="检查 LoRA 训练数据的问答格式")
     parser.add_argument("--train_file", default="data/outputs/lora_qwen_vl_train.jsonl")
     parser.add_argument("--num_examples", type=int, default=3)
+    parser.add_argument(
+        "--min_average_length",
+        type=float,
+        default=20.0,
+        help="assistant 平均答案长度低于该值时给出警告。",
+    )
+    parser.add_argument(
+        "--fail_on_short",
+        action="store_true",
+        help="如果平均答案长度低于阈值，则以退出码 2 停止后续训练。",
+    )
     return parser.parse_args()
 
 
@@ -78,14 +89,19 @@ def main() -> None:
         avg_len = 0.0
         min_len = 0
         max_len = 0
-    too_short_count = sum(1 for length in lengths if length < 20)
+    too_short_count = sum(1 for length in lengths if length < args.min_average_length)
     print("\n长度统计：")
     print(f"- average_length: {avg_len:.2f}")
     print(f"- min_length: {min_len}")
     print(f"- max_length: {max_len}")
-    print(f"- too_short_count(<20 chars): {too_short_count}")
-    if avg_len < 20:
-        print("警告：assistant 平均答案长度小于 20 个字符，可能仍然过短。")
+    print(f"- too_short_count(<{args.min_average_length:g} chars): {too_short_count}")
+    if avg_len < args.min_average_length:
+        print(
+            f"警告：assistant 平均答案长度小于 {args.min_average_length:g} 个字符，"
+            "可能仍然过短。"
+        )
+        if args.fail_on_short:
+            raise SystemExit(2)
 
 
 if __name__ == "__main__":

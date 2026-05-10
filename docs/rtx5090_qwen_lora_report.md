@@ -12,11 +12,14 @@
 - 模型：Qwen2.5-VL-3B-Instruct
 - 微调方式：PEFT-LoRA
 - attention：sdpa
+
+## 第一轮实验：短答退化问题
+
 - run_dir：`runs/20260510_194349`
 - run_mode：`full`
 - model_name：`/root/autodl-tmp/models/Qwen/Qwen2___5-VL-3B-Instruct`
 
-## 数据设置
+### 数据设置
 
 本次实验使用项目内生成的本地合成 demo 数据：
 
@@ -28,7 +31,7 @@
 
 这些数据用于功能性验证，不等同于正式 benchmark。当前结果不能代表模型在 MathVista、ChartQA、DocVQA 等公开数据集上的泛化能力。
 
-## 训练配置
+### 训练配置
 
 | config | value |
 |---|---:|
@@ -38,7 +41,7 @@
 | lora_alpha | 16 |
 | attention | sdpa |
 
-## Baseline vs LoRA
+### Baseline vs LoRA
 
 | metric | Qwen2.5-VL base | Qwen2.5-VL + LoRA | delta |
 |---|---:|---:|---:|
@@ -48,7 +51,7 @@
 | average_answer_length | 233.6800 | 3.2000 | -230.4800 |
 | average_latency_seconds | 1.6419 | 0.1953 | -1.4466 |
 
-## 结果分析
+### 结果分析
 
 基座模型在 test split 上的 `keyword_coverage` 为 0.9017，LoRA 后下降到 0.5533。这说明当前合成数据规模、训练策略、答案格式或评测方式仍需要继续改进，不能把这次实验表述为指标提升。
 
@@ -113,4 +116,4 @@ LoRA 后 `average_answer_length` 从 233.6800 下降到 3.2000，说明模型输
 - 做 bad case 分析，定位 LoRA 后回答变短、关键词覆盖下降的样本类型。
 - 调整 LoRA target modules、learning rate、max_steps、batch 组织方式和 generation `max_new_tokens` 等参数。
 - 改进训练答案格式，让模型学习更稳定的短答案或结构化答案输出。
-- 已发现 LoRA 输出过短问题，下一轮修复方向包括 `answer_style=explain`、assistant-only loss mask、统一 `answer_then_reason` 评测 prompt 和 bad case 分析。
+- 第二轮已经用 `answer_style=explain`、assistant-only loss mask、统一 `answer_then_reason` 评测 prompt 和 bad case 分析缓解了短答退化；后续仍需要在更真实的数据和更严格指标上验证。
