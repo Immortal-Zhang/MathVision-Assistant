@@ -261,7 +261,7 @@ python scripts/train_lora_qwen_vl_gpu.py \
 
 ## RTX 5090 上的 Qwen2.5-VL LoRA 微调实验
 
-本仓库提供了一个面向 RTX 5090 服务器的一键实验脚本，用来跑通 Qwen2.5-VL LoRA 的小规模功能性闭环：环境检查、demo 数据生成、mock smoke test、mock baseline、LoRA 数据准备、Qwen2.5-VL LoRA 微调、LoRA 前后评测对比和自动报告生成。
+项目已经支持 Qwen2.5-VL LoRA 的训练、评测和报告生成闭环。本仓库提供了一个面向 RTX 5090 服务器的一键实验脚本，用来跑通环境检查、demo 数据生成、mock smoke test、mock baseline、LoRA 数据准备、Qwen2.5-VL LoRA 微调、LoRA 前后评测对比和自动报告生成。
 
 ### 服务器环境
 
@@ -347,6 +347,30 @@ runs/YYYYMMDD_HHMMSS/
 - `runs/时间戳/metrics/qwen_base/summary.json`：基座模型评测摘要。
 - `runs/时间戳/metrics/qwen_lora/summary.json`：LoRA 后评测摘要。
 - `runs/时间戳/report.md`：数据划分数量、baseline 与 LoRA 指标对比。
+
+### 已完成的 full run 记录
+
+一次 RTX 5090 full run 已完成并整理在 [docs/rtx5090_qwen_lora_report.md](docs/rtx5090_qwen_lora_report.md)。
+
+实验设置：
+
+- run_dir：`runs/20260510_194349`
+- 模型：Qwen2.5-VL-3B-Instruct
+- 数据：本地合成 demo 数据，`train / val / test = 800 / 100 / 100`
+- 训练：PEFT-LoRA，`max_steps=300`，`limit_samples=1000`，`lora_r=8`，`lora_alpha=16`
+- attention：`sdpa`
+
+结果摘要：
+
+| metric | Qwen2.5-VL base | Qwen2.5-VL + LoRA | delta |
+|---|---:|---:|---:|
+| num_samples | 100.0000 | 100.0000 | +0.0000 |
+| keyword_coverage | 0.9017 | 0.5533 | -0.3483 |
+| non_empty_rate | 1.0000 | 1.0000 | +0.0000 |
+| average_answer_length | 233.6800 | 3.2000 | -230.4800 |
+| average_latency_seconds | 1.6419 | 0.1953 | -1.4466 |
+
+这次结果说明工程闭环已经跑通，但不能说明 LoRA 提升了模型能力。LoRA 后 `keyword_coverage` 从 0.9017 下降到 0.5533，`average_answer_length` 下降到 3.2，说明当前数据规模、训练策略、答案格式或评测方式仍需改进。平均延迟下降也不能直接视为效果提升，因为 LoRA 后输出明显变短。
 
 ### 注意事项
 

@@ -1,13 +1,17 @@
+# Python / local environment
 .venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.cache/
 .DS_Store
 
 # Local generated data
 data/outputs/
+hf_cache/
+models/
 
 # Evaluation outputs
 reports/**/*.csv
@@ -23,12 +27,16 @@ reports/**/*.md
 !reports/mock_test/eval_results.csv
 !reports/mock_test/eval_summary.md
 
-# Model / training artifacts
+# Model / training artifacts and exported archives
+runs/
 checkpoints/
+*.tar.gz
+*.zip
 *.safetensors
+*.bin
 *.pt
 *.pth
-*.bin
+*.ckpt
 
 # Build artifacts
 *.egg-info/
@@ -36,4 +44,3 @@ dist/
 build/
 outputs/
 wandb/
-runs/
