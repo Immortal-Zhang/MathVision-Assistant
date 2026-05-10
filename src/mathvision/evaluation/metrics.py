@@ -18,7 +18,11 @@ def normalize_text(text: str) -> str:
 
 
 def exact_match(prediction: str, reference: str) -> float:
-    """Return 1 when normalized strings match or the answer appears clearly."""
+    """Prototype exact-match metric after light normalization.
+
+    This is useful for demo QA checks, but it is stricter than a formal math
+    equivalence metric.
+    """
 
     pred = normalize_text(prediction)
     ref = normalize_text(reference)
@@ -59,7 +63,11 @@ def extract_numbers(text: str) -> list[float]:
 
 
 def numeric_match(prediction: str, reference: str, tol: float = 1e-3) -> float:
-    """Return 1 when any extracted predicted number matches a reference number."""
+    """Prototype numeric metric with simple tolerance matching.
+
+    It checks whether extracted numbers match, but does not validate units,
+    semantics, or the reasoning path.
+    """
 
     pred_numbers = extract_numbers(prediction)
     ref_numbers = extract_numbers(reference)
@@ -72,7 +80,11 @@ def numeric_match(prediction: str, reference: str, tol: float = 1e-3) -> float:
 
 
 def keyword_coverage(prediction: str, keywords: list[str]) -> float:
-    """Fraction of keywords covered by prediction."""
+    """Fraction of reference keywords covered by prediction.
+
+    This is a lightweight concept-coverage signal for demo evaluation, not a
+    full factuality or reasoning metric.
+    """
 
     if not keywords:
         return 1.0
@@ -87,7 +99,11 @@ def keyword_coverage(prediction: str, keywords: list[str]) -> float:
 def retrieval_recall_at_k(
     retrieved_ids: list[str], related_knowledge_ids: list[str], k: int
 ) -> float:
-    """Recall@K for retrieved evidence ids."""
+    """Recall@K for retrieved evidence ids.
+
+    This measures evidence-level recall, not whether the final generated answer
+    used the evidence correctly.
+    """
 
     if not related_knowledge_ids:
         return 1.0
