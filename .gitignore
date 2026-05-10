@@ -36,3 +36,4 @@ dist/
 build/
 outputs/
 wandb/
+runs/

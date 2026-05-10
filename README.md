@@ -249,6 +249,102 @@ python scripts/train_lora_qwen_vl_gpu.py \
 
 `requirements-gpu.txt` 里还放了 `vllm`，但它主要用于后续部署或高吞吐推理，不是本地必须安装的依赖。
 
+## RTX 5090 上的 Qwen2.5-VL LoRA 微调实验
+
+本仓库提供了一个面向 RTX 5090 服务器的一键实验脚本，用来跑通 Qwen2.5-VL LoRA 的小规模功能性闭环：环境检查、demo 数据生成、mock smoke test、mock baseline、LoRA 数据准备、Qwen2.5-VL LoRA 微调、LoRA 前后评测对比和自动报告生成。
+
+### 服务器环境
+
+推荐服务器配置：
+
+```text
+项目路径：/root/autodl-tmp/projects/MathVision-Assistant
+GPU：RTX 5090 32GB
+Python：3.12
+PyTorch：2.8.0
+CUDA：12.8
+Hugging Face 缓存：/root/autodl-tmp/hf_cache
+```
+
+服务器上不要重新安装 `torch`、`torchvision`、`torchaudio`，也不要安装或编译 `flash-attn`。本实验默认使用 `sdpa` attention，如果模型加载不兼容，训练和评测脚本会退回 `eager`。
+
+建议只补齐项目需要的上层依赖：
+
+```bash
+cd /root/autodl-tmp/projects/MathVision-Assistant
+python -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -U transformers accelerate peft trl datasets qwen-vl-utils
+pip install -U numpy pandas pillow matplotlib scikit-learn pyyaml tqdm gradio pytest sentencepiece protobuf
+```
+
+这里没有安装 `vllm` 和 `flash-attn`。如果服务器镜像已经内置 PyTorch，请优先保留镜像自带版本。
+
+### 一键运行
+
+smoke 模式只用 2 条训练样本、1 个 step，用来验证脚本和显存链路：
+
+```bash
+cd /root/autodl-tmp/projects/MathVision-Assistant
+source .venv/bin/activate
+RUN_MODE=smoke bash scripts/run_qwen_lora_gpu.sh
+```
+
+full 模式使用最多 100 条 train split 样本、50 个 step：
+
+```bash
+cd /root/autodl-tmp/projects/MathVision-Assistant
+source .venv/bin/activate
+RUN_MODE=full bash scripts/run_qwen_lora_gpu.sh
+```
+
+如果 full 模式显存不足或速度太慢，可以手动降级参数，例如：
+
+```bash
+RUN_MODE=full MAX_STEPS=20 LORA_R=4 LORA_ALPHA=8 bash scripts/run_qwen_lora_gpu.sh
+```
+
+降级参数会写入 `train_config.json` 和最终 `report.md`，便于解释实验设置。
+
+### 输出目录
+
+每次运行会创建一个时间戳目录：
+
+```text
+runs/YYYYMMDD_HHMMSS/
+├── checkpoints/qwen25vl-lora/
+│   ├── adapter_config.json
+│   ├── adapter_model.safetensors
+│   ├── train_config.json
+│   ├── train_metrics.json
+│   └── train_log.json
+├── data/lora_qwen_vl_train.jsonl
+├── logs/run_qwen_lora.log
+├── metrics/
+│   ├── env.json
+│   ├── mock_all/
+│   ├── mock_test/
+│   ├── qwen_base/
+│   └── qwen_lora/
+└── report.md
+```
+
+关键结果文件：
+
+- `runs/时间戳/metrics/env.json`：Python、PyTorch、CUDA、GPU、依赖版本和 git commit。
+- `runs/时间戳/checkpoints/qwen25vl-lora/`：LoRA adapter 和训练配置。
+- `runs/时间戳/metrics/qwen_base/summary.json`：基座模型评测摘要。
+- `runs/时间戳/metrics/qwen_lora/summary.json`：LoRA 后评测摘要。
+- `runs/时间戳/report.md`：baseline 与 LoRA 指标对比。
+
+### 注意事项
+
+- LoRA 训练默认只使用 `data/demo/qa_train.jsonl`，评测默认使用 held-out `data/demo/qa_test.jsonl`。
+- 当前 100 条数据是本地合成 demo 数据，适合验证训练、adapter 加载、推理和报告生成，不等同于正式 benchmark。
+- `scripts/eval_qwen_vl_lora.py` 的指标包括样本数、关键词覆盖率、非空回答率、平均回答长度和平均延迟，主要用于快速检查功能闭环。
+- 如果要做正式效果结论，需要接入 MathVista、ChartQA、DocVQA 等公开数据集，并固定硬件、模型版本、推理参数和随机种子。
+
 ## 评测
 
 评测脚本会保存两类文件：
