@@ -32,6 +32,7 @@ if [[ "${RUN_MODE}" == "smoke" ]]; then
   DEFAULT_LORA_DROPOUT=0.0
   DEFAULT_LEARNING_RATE=2e-4
   DEFAULT_EVAL_LIMIT=3
+  DEFAULT_EVAL_MAX_NEW_TOKENS=96
 else
   DEFAULT_NUM_SAMPLES=1000
   DEFAULT_LIMIT_SAMPLES=1000
@@ -41,8 +42,9 @@ else
   DEFAULT_LORA_R=8
   DEFAULT_LORA_ALPHA=16
   DEFAULT_LORA_DROPOUT=0.05
-  DEFAULT_LEARNING_RATE=2e-4
+  DEFAULT_LEARNING_RATE=1e-4
   DEFAULT_EVAL_LIMIT=100
+  DEFAULT_EVAL_MAX_NEW_TOKENS=96
 fi
 
 NUM_SAMPLES="${NUM_SAMPLES:-${DEFAULT_NUM_SAMPLES}}"
@@ -55,6 +57,8 @@ LORA_ALPHA="${LORA_ALPHA:-${DEFAULT_LORA_ALPHA}}"
 LORA_DROPOUT="${LORA_DROPOUT:-${DEFAULT_LORA_DROPOUT}}"
 LEARNING_RATE="${LEARNING_RATE:-${DEFAULT_LEARNING_RATE}}"
 EVAL_LIMIT="${EVAL_LIMIT:-${DEFAULT_EVAL_LIMIT}}"
+EVAL_MAX_NEW_TOKENS="${EVAL_MAX_NEW_TOKENS:-${DEFAULT_EVAL_MAX_NEW_TOKENS}}"
+PROMPT_STYLE="${PROMPT_STYLE:-answer_then_reason}"
 BF16="${BF16:-true}"
 GRADIENT_CHECKPOINTING="${GRADIENT_CHECKPOINTING:-true}"
 
@@ -91,7 +95,11 @@ python scripts/run_eval.py \
 LORA_TRAIN_FILE="${DATA_DIR}/lora_qwen_vl_train.jsonl"
 python scripts/prepare_lora_data.py \
   --qa_file data/demo/qa_train.jsonl \
-  --out_file "${LORA_TRAIN_FILE}"
+  --out_file "${LORA_TRAIN_FILE}" \
+  --answer_style explain \
+  --knowledge_file data/demo/knowledge_base.jsonl
+
+python scripts/inspect_lora_data.py --train_file "${LORA_TRAIN_FILE}"
 
 BF16_ARGS=()
 if [[ "${BF16}" == "true" ]]; then
@@ -124,6 +132,8 @@ python scripts/eval_qwen_vl_lora.py \
   --qa_file data/demo/qa_test.jsonl \
   --out_dir "${METRICS_DIR}/qwen_base" \
   --limit_samples "${EVAL_LIMIT}" \
+  --prompt_style "${PROMPT_STYLE}" \
+  --max_new_tokens "${EVAL_MAX_NEW_TOKENS}" \
   --attn_implementation "${ATTN_IMPLEMENTATION}" \
   "${BF16_ARGS[@]}"
 
@@ -133,8 +143,15 @@ python scripts/eval_qwen_vl_lora.py \
   --qa_file data/demo/qa_test.jsonl \
   --out_dir "${METRICS_DIR}/qwen_lora" \
   --limit_samples "${EVAL_LIMIT}" \
+  --prompt_style "${PROMPT_STYLE}" \
+  --max_new_tokens "${EVAL_MAX_NEW_TOKENS}" \
   --attn_implementation "${ATTN_IMPLEMENTATION}" \
   "${BF16_ARGS[@]}"
+
+python scripts/analyze_qwen_lora_bad_cases.py \
+  --base_csv "${METRICS_DIR}/qwen_base/eval_results.csv" \
+  --lora_csv "${METRICS_DIR}/qwen_lora/eval_results.csv" \
+  --out_dir "${METRICS_DIR}/bad_cases"
 
 python - "${RUN_DIR}" "${RUN_MODE}" "${METRICS_DIR}/qwen_base/summary.json" \
   "${METRICS_DIR}/qwen_lora/summary.json" "${ADAPTER_DIR}/train_config.json" \
@@ -160,7 +177,15 @@ for split_name, split_path in {
     else:
         split_counts[split_name] = 0
 
-metric_keys = ["num_samples", "keyword_coverage", "non_empty_rate", "average_answer_length", "average_latency_seconds"]
+metric_keys = [
+    "num_samples",
+    "exact_match",
+    "numeric_match",
+    "too_short_rate",
+    "keyword_coverage",
+    "average_answer_length",
+    "average_latency_seconds",
+]
 lines = [
     "# MathVision Qwen2.5-VL LoRA Run Report",
     "",
@@ -175,8 +200,10 @@ lines = [
     f"- limit_samples: {train_config['limit_samples']}",
     f"- lora_r: {train_config['lora_r']}",
     f"- lora_alpha: {train_config['lora_alpha']}",
-    f"- attention: `{train_config['attn_implementation']}`",
-    f"- train samples: {split_counts['train']}",
+        f"- attention: `{train_config['attn_implementation']}`",
+        f"- prompt_style: `{base.get('prompt_style', '')}`",
+        f"- eval max_new_tokens: {base.get('max_new_tokens', '')}",
+        f"- train samples: {split_counts['train']}",
     f"- val samples: {split_counts['val']}",
     f"- test samples: {split_counts['test']}",
     "",
@@ -217,8 +244,15 @@ lines.extend(
         f"- mock test 评测：`{run_dir}/metrics/mock_test/`",
         f"- Qwen base 评测：`{run_dir}/metrics/qwen_base/`",
         f"- Qwen LoRA 评测：`{run_dir}/metrics/qwen_lora/`",
+        f"- bad case 分析：`{run_dir}/metrics/bad_cases/`",
         f"- LoRA adapter：`{train_config['output_dir']}`",
         f"- 训练日志：`{train_config['output_dir']}/train_log.json`",
+        "",
+        "## 诊断说明",
+        "",
+        "- 如果 LoRA 的 too_short_rate 明显高于 base，说明 LoRA 可能出现短答退化。",
+        "- 如果 LoRA 的 keyword_coverage 下降，不能写成指标提升。",
+        "- 当前仍然是本地合成 demo 数据，不等同于正式 benchmark。",
         "",
         "## 说明",
         "",

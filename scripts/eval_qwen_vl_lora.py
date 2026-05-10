@@ -14,7 +14,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from mathvision.evaluation.metrics import keyword_coverage
+from mathvision.evaluation.metrics import extract_numbers, keyword_coverage, normalize_text
 from mathvision.io_utils import read_jsonl
 
 
@@ -25,7 +25,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--qa_file", default="data/demo/qa_test.jsonl")
     parser.add_argument("--out_dir", default="reports/qwen_lora_eval")
     parser.add_argument("--limit_samples", type=int, default=100)
-    parser.add_argument("--max_new_tokens", type=int, default=128)
+    parser.add_argument("--max_new_tokens", type=int, default=96)
+    parser.add_argument(
+        "--prompt_style",
+        choices=["plain", "answer_then_reason"],
+        default="answer_then_reason",
+    )
+    parser.add_argument("--min_answer_length_warning", type=int, default=10)
     parser.add_argument("--bf16", action="store_true")
     parser.add_argument(
         "--attn_implementation",
@@ -100,9 +106,10 @@ def _generate(
     process_vision_info: Any,
     torch_module: Any,
     max_new_tokens: int,
+    prompt_style: str,
 ) -> str:
     image_path = _abs_image_path(str(record["image"]))
-    question = str(record["question"])
+    question = _build_eval_question(str(record["question"]), prompt_style)
     messages = [
         {
             "role": "user",
@@ -144,6 +151,27 @@ def _generate(
     return decoded[0].strip() if decoded else ""
 
 
+def _build_eval_question(question: str, prompt_style: str) -> str:
+    if prompt_style == "plain":
+        return question
+    return (
+        f"{question}\n"
+        "请先给出答案，再用一句话说明依据。回答尽量简洁，但不要只输出一个数字或一个词。"
+    )
+
+
+def _strict_exact_match(prediction: str, reference: str) -> float:
+    return 1.0 if normalize_text(prediction) == normalize_text(reference) else 0.0
+
+
+def _first_numeric_match(prediction: str, reference: str, tol: float = 1e-3) -> float:
+    pred_numbers = extract_numbers(prediction)
+    ref_numbers = extract_numbers(reference)
+    if not pred_numbers or not ref_numbers:
+        return 0.0
+    return 1.0 if abs(pred_numbers[0] - ref_numbers[0]) <= tol else 0.0
+
+
 def _write_markdown(out_file: Path, summary: dict[str, Any], rows: list[dict[str, Any]]) -> None:
     lines = [
         "# Qwen2.5-VL LoRA Demo Evaluation",
@@ -163,13 +191,15 @@ def _write_markdown(out_file: Path, summary: dict[str, Any], rows: list[dict[str
             "",
             "## Samples",
             "",
-            "| id | keyword_hit | answer_length |",
-            "|---|---:|---:|",
+            "| id | keyword_hit | exact_match | numeric_match | too_short | answer_length |",
+            "|---|---:|---:|---:|---:|---:|",
         ]
     )
     for row in rows:
         lines.append(
-            f"| {row['id']} | {float(row['keyword_hit']):.4f} | {int(row['answer_length'])} |"
+            f"| {row['id']} | {float(row['keyword_hit']):.4f} | "
+            f"{float(row['exact_match']):.4f} | {float(row['numeric_match']):.4f} | "
+            f"{row['too_short']} | {int(row['answer_length'])} |"
         )
     out_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -212,19 +242,28 @@ def main() -> None:
             process_vision_info=deps["process_vision_info"],
             torch_module=torch,
             max_new_tokens=args.max_new_tokens,
+            prompt_style=args.prompt_style,
         )
         latency = time.perf_counter() - started
         keywords = [str(item) for item in record.get("keywords", [])]
         hit = keyword_coverage(answer, keywords)
+        reference_answer = str(record.get("answer", ""))
+        answer_length = len(answer)
+        exact = _strict_exact_match(answer, reference_answer)
+        numeric = _first_numeric_match(answer, reference_answer)
+        too_short = answer_length < args.min_answer_length_warning
         rows.append(
             {
                 "id": record.get("id", ""),
                 "image_path": record.get("image", ""),
                 "question": record.get("question", ""),
-                "reference_answer": record.get("answer", ""),
+                "reference_answer": reference_answer,
                 "model_answer": answer,
                 "keyword_hit": hit,
-                "answer_length": len(answer),
+                "too_short": too_short,
+                "exact_match": exact,
+                "numeric_match": numeric,
+                "answer_length": answer_length,
                 "latency_seconds": latency,
             }
         )
@@ -237,6 +276,15 @@ def main() -> None:
         "non_empty_rate": sum(1 for row in rows if str(row["model_answer"]).strip()) / len(rows)
         if rows
         else 0.0,
+        "too_short_rate": sum(1 for row in rows if bool(row["too_short"])) / len(rows)
+        if rows
+        else 0.0,
+        "exact_match": sum(float(row["exact_match"]) for row in rows) / len(rows)
+        if rows
+        else 0.0,
+        "numeric_match": sum(float(row["numeric_match"]) for row in rows) / len(rows)
+        if rows
+        else 0.0,
         "average_answer_length": sum(int(row["answer_length"]) for row in rows) / len(rows)
         if rows
         else 0.0,
@@ -245,6 +293,8 @@ def main() -> None:
         else 0.0,
         "adapter_dir": args.adapter_dir or "",
         "qa_file": args.qa_file,
+        "prompt_style": args.prompt_style,
+        "max_new_tokens": args.max_new_tokens,
     }
 
     csv_path = out_dir / "eval_results.csv"

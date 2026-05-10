@@ -103,6 +103,17 @@ def _normalize_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return normalized
 
 
+def _prompt_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    prompt: list[dict[str, Any]] = []
+    for message in messages:
+        if message.get("role") == "assistant":
+            break
+        prompt.append(message)
+    if not prompt:
+        raise ValueError("训练样本缺少 user prompt，无法构造 assistant-only loss mask。")
+    return prompt
+
+
 def _load_model(
     model_cls: Any,
     model_name: str,
@@ -224,16 +235,32 @@ def main() -> None:
 
     def collate_fn(features: list[dict[str, Any]]) -> dict[str, Any]:
         texts: list[str] = []
+        prompt_lengths: list[int] = []
         all_images: list[Any] = []
         all_videos: list[Any] = []
         for feature in features:
             messages = _normalize_messages(feature["messages"])
+            prompt_messages = _prompt_messages(messages)
             text = processor.apply_chat_template(
                 messages,
                 tokenize=False,
                 add_generation_prompt=False,
             )
+            prompt_text = processor.apply_chat_template(
+                prompt_messages,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
             image_inputs, video_inputs = process_vision_info(messages)
+            prompt_image_inputs, prompt_video_inputs = process_vision_info(prompt_messages)
+            prompt_batch = processor(
+                text=[prompt_text],
+                images=prompt_image_inputs or None,
+                videos=prompt_video_inputs or None,
+                padding=False,
+                return_tensors="pt",
+            )
+            prompt_lengths.append(int(prompt_batch["input_ids"].shape[1]))
             texts.append(text)
             if image_inputs:
                 all_images.extend(image_inputs)
@@ -249,8 +276,28 @@ def main() -> None:
         )
         labels = batch["input_ids"].clone()
         pad_token_id = processor.tokenizer.pad_token_id
+        attention_mask = batch.get("attention_mask")
         if pad_token_id is not None:
             labels[labels == pad_token_id] = -100
+        if attention_mask is None:
+            raise RuntimeError("processor 输出缺少 attention_mask，无法构造 assistant-only loss mask。")
+        for row_index, prompt_len in enumerate(prompt_lengths):
+            active_len = int(attention_mask[row_index].sum().item())
+            active_positions = attention_mask[row_index].nonzero(as_tuple=False)
+            pad_offset = int(active_positions[0].item()) if len(active_positions) else 0
+            prompt_end = pad_offset + prompt_len
+            if prompt_end >= labels.shape[1] or prompt_len >= active_len:
+                raise RuntimeError(
+                    "assistant-only loss mask 构造失败：prompt token 长度不小于完整样本长度。"
+                    "请检查 chat_template、图像 token 展开和训练样本格式。"
+                )
+            labels[row_index, :prompt_end] = -100
+            labels[row_index][attention_mask[row_index] == 0] = -100
+            if not (labels[row_index] != -100).any().item():
+                raise RuntimeError(
+                    "assistant-only loss mask 后没有可训练 token。"
+                    "请检查 assistant 回答是否为空或 prompt_len 计算是否异常。"
+                )
         batch["labels"] = labels
         return batch
 

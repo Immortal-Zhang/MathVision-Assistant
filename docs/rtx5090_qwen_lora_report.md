@@ -71,3 +71,4 @@ LoRA 后 `average_answer_length` 从 233.6800 下降到 3.2000，说明模型输
 - 做 bad case 分析，定位 LoRA 后回答变短、关键词覆盖下降的样本类型。
 - 调整 LoRA target modules、learning rate、max_steps、batch 组织方式和 generation `max_new_tokens` 等参数。
 - 改进训练答案格式，让模型学习更稳定的短答案或结构化答案输出。
+- 已发现 LoRA 输出过短问题，下一轮修复方向包括 `answer_style=explain`、assistant-only loss mask、统一 `answer_then_reason` 评测 prompt 和 bad case 分析。

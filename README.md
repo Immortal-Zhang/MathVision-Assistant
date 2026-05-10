@@ -372,6 +372,25 @@ runs/YYYYMMDD_HHMMSS/
 
 这次结果说明工程闭环已经跑通，但不能说明 LoRA 提升了模型能力。LoRA 后 `keyword_coverage` 从 0.9017 下降到 0.5533，`average_answer_length` 下降到 3.2，说明当前数据规模、训练策略、答案格式或评测方式仍需改进。平均延迟下降也不能直接视为效果提升，因为 LoRA 后输出明显变短。
 
+### 下一轮 LoRA 修复实验
+
+上一轮 Qwen2.5-VL LoRA full run 的主要问题是 LoRA 后回答明显变短，`keyword_coverage` 下降，不能写成效果提升。当前代码已经针对这个问题做了下一轮实验准备：
+
+1. LoRA 训练数据默认使用 `answer_style=explain`，assistant 目标改为“答案 + 一句话依据”。
+2. Qwen SFT collator 改为 assistant-only loss mask，只对 assistant 回答部分计算 loss，不对用户问题、图像占位和 prompt 部分计算 loss。
+3. Qwen base 和 Qwen LoRA 评测统一使用 `answer_then_reason` prompt，要求先给答案再用一句话说明依据。
+4. 新增 `too_short_rate`、`exact_match`、`numeric_match`，并新增 bad case 分析脚本。
+
+下一轮服务器实验可以这样运行：
+
+```bash
+MODEL_NAME=/root/autodl-tmp/models/Qwen/Qwen2___5-VL-3B-Instruct \
+RUN_MODE=full \
+bash scripts/run_qwen_lora_gpu.sh
+```
+
+这次修复只是让训练目标、评测目标和报告分析更一致，不代表已经证明 LoRA 会提升效果。是否改善需要下一轮 RTX 5090 实验报告来判断。
+
 ### 注意事项
 
 - LoRA 训练默认只使用 `data/demo/qa_train.jsonl`，评测默认使用 held-out `data/demo/qa_test.jsonl`。
