@@ -22,18 +22,31 @@ from mathvision.io_utils import write_jsonl
 RANDOM_SEED = 42
 TASK_TYPES = [
     "function_plot",
-    "bar_chart",
-    "line_chart",
-    "pie_chart",
     "geometry",
-    "formula",
     "coordinate",
-    "table",
+    "statistical_chart",
+    "algebra",
+    "linear_algebra",
 ]
 
 
-def generate_demo_dataset(output_dir: str | Path = "data/demo") -> dict[str, str]:
-    """Generate 100 reproducible demo images, QA records, splits, and KB records."""
+def generate_demo_dataset(
+    output_dir: str | Path = "data/demo",
+    num_samples: int = 1000,
+    train_ratio: float = 0.8,
+    val_ratio: float = 0.1,
+    seed: int = RANDOM_SEED,
+) -> dict[str, str]:
+    """Generate reproducible demo images, QA records, splits, and KB records."""
+
+    if num_samples <= 0:
+        raise ValueError("num_samples 必须大于 0")
+    if not 0 < train_ratio < 1:
+        raise ValueError("train_ratio 必须在 0 和 1 之间")
+    if not 0 <= val_ratio < 1:
+        raise ValueError("val_ratio 必须在 0 和 1 之间")
+    if train_ratio + val_ratio >= 1:
+        raise ValueError("train_ratio + val_ratio 必须小于 1")
 
     root = Path(output_dir)
     images_dir = root / "images"
@@ -41,13 +54,15 @@ def generate_demo_dataset(output_dir: str | Path = "data/demo") -> dict[str, str
     for old_image in images_dir.glob("*.png"):
         old_image.unlink()
 
+    rng = np.random.default_rng(seed)
     knowledge = _build_knowledge_base()
     samples: list[dict[str, Any]] = []
+    train_count, val_count, test_count = _split_counts(num_samples, train_ratio, val_ratio)
 
-    for index in range(100):
+    for index in range(num_samples):
         task_type = TASK_TYPES[index % len(TASK_TYPES)]
         variant = index // len(TASK_TYPES)
-        split = _split_for_index(index)
+        split = _split_for_index(index, train_count, val_count)
         difficulty = _difficulty_for_variant(variant)
         sample = _make_sample(
             index=index,
@@ -56,8 +71,11 @@ def generate_demo_dataset(output_dir: str | Path = "data/demo") -> dict[str, str
             split=split,
             difficulty=difficulty,
             images_dir=images_dir,
+            rng=rng,
         )
         samples.append(sample)
+
+    _validate_split_integrity(samples)
 
     # Keep one legacy image used in earlier README/reports. It is not part of
     # the 100-row QA split, but prevents old result references from breaking.
@@ -83,18 +101,43 @@ def generate_demo_dataset(output_dir: str | Path = "data/demo") -> dict[str, str
         "knowledge_base_file": str(kb_file),
         "images_dir": str(images_dir),
         "num_samples": str(len(samples)),
-        "num_train": str(sum(1 for item in samples if item["split"] == "train")),
-        "num_val": str(sum(1 for item in samples if item["split"] == "val")),
-        "num_test": str(sum(1 for item in samples if item["split"] == "test")),
+        "num_train": str(train_count),
+        "num_val": str(val_count),
+        "num_test": str(test_count),
+        "train_ratio": str(train_ratio),
+        "val_ratio": str(val_ratio),
+        "test_ratio": str(1 - train_ratio - val_ratio),
+        "seed": str(seed),
     }
 
 
-def _split_for_index(index: int) -> str:
-    if index < 70:
+def _split_counts(num_samples: int, train_ratio: float, val_ratio: float) -> tuple[int, int, int]:
+    train_count = int(num_samples * train_ratio)
+    val_count = int(num_samples * val_ratio)
+    test_count = num_samples - train_count - val_count
+    return train_count, val_count, test_count
+
+
+def _split_for_index(index: int, train_count: int, val_count: int) -> str:
+    if index < train_count:
         return "train"
-    if index < 85:
+    if index < train_count + val_count:
         return "val"
     return "test"
+
+
+def _validate_split_integrity(samples: list[dict[str, Any]]) -> None:
+    ids_by_split: dict[str, set[str]] = {"train": set(), "val": set(), "test": set()}
+    for sample in samples:
+        sample_id = str(sample["id"])
+        split = str(sample["split"])
+        if sample_id in ids_by_split[split]:
+            raise ValueError(f"样本 id 重复: {sample_id}")
+        ids_by_split[split].add(sample_id)
+    if ids_by_split["train"] & ids_by_split["test"]:
+        raise ValueError("发现 test 集样本 id 出现在 train 集中")
+    if ids_by_split["val"] & ids_by_split["test"]:
+        raise ValueError("发现 test 集样本 id 出现在 val 集中")
 
 
 def _difficulty_for_variant(variant: int) -> str:
@@ -139,22 +182,26 @@ def _make_sample(
     split: str,
     difficulty: str,
     images_dir: Path,
+    rng: np.random.Generator,
 ) -> dict[str, Any]:
     makers = {
         "function_plot": _make_function_plot_sample,
-        "bar_chart": _make_bar_chart_sample,
-        "line_chart": _make_line_chart_sample,
-        "pie_chart": _make_pie_chart_sample,
         "geometry": _make_geometry_sample,
-        "formula": _make_formula_sample,
         "coordinate": _make_coordinate_sample,
-        "table": _make_table_sample,
+        "statistical_chart": _make_statistical_chart_sample,
+        "algebra": _make_algebra_sample,
+        "linear_algebra": _make_linear_algebra_sample,
     }
-    return makers[task_type](index, variant, split, difficulty, images_dir)
+    return makers[task_type](index, variant, split, difficulty, images_dir, rng)
 
 
 def _make_function_plot_sample(
-    index: int, variant: int, split: str, difficulty: str, images_dir: Path
+    index: int,
+    variant: int,
+    split: str,
+    difficulty: str,
+    images_dir: Path,
+    rng: np.random.Generator | None = None,
 ) -> dict[str, Any]:
     modes = ["slope", "intercept", "vertex", "monotonic", "period", "intersection"]
     mode = modes[variant % len(modes)]
@@ -178,9 +225,9 @@ def _make_function_plot_sample(
         )
 
     sample_id = f"function_plot_{index:03d}_{mode}"
-    if index == 16:
+    if mode == "vertex" and variant == 2:
         sample_id = "parabola_vertex_01"
-    if index == 32:
+    if mode == "period" and variant == 4:
         sample_id = "sine_period_01"
     filename = f"{sample_id}.png"
     if mode == "slope":
@@ -289,11 +336,16 @@ def _make_function_plot_sample(
 
 
 def _make_bar_chart_sample(
-    index: int, variant: int, split: str, difficulty: str, images_dir: Path
+    index: int,
+    variant: int,
+    split: str,
+    difficulty: str,
+    images_dir: Path,
+    rng: np.random.Generator | None = None,
 ) -> dict[str, Any]:
     modes = ["maximum", "minimum", "difference", "total", "ranking"]
     mode = modes[variant % len(modes)]
-    if index == 1:
+    if variant == 0:
         sample_id = "bar_chart_max_01"
         filename = "bar_chart_max_01.png"
         labels, values = ["A", "B", "C"], [3, 5, 8]
@@ -320,7 +372,7 @@ def _make_bar_chart_sample(
         1 + (variant * 4) % 8,
     ]
     sample_id = f"bar_chart_{index:03d}_{mode}"
-    if index == 25:
+    if mode == "total" and variant == 3:
         sample_id = "histogram_total_01"
     filename = f"{sample_id}.png"
     _plot_bar(images_dir / filename, labels, values, "Bar Chart")
@@ -361,13 +413,18 @@ def _make_bar_chart_sample(
 
 
 def _make_line_chart_sample(
-    index: int, variant: int, split: str, difficulty: str, images_dir: Path
+    index: int,
+    variant: int,
+    split: str,
+    difficulty: str,
+    images_dir: Path,
+    rng: np.random.Generator | None = None,
 ) -> dict[str, Any]:
     modes = ["trend", "peak", "valley", "growth"]
     mode = modes[variant % len(modes)]
-    sample_id = "line_chart_trend_01" if index == 2 else f"line_chart_{index:03d}_{mode}"
+    sample_id = "line_chart_trend_01" if variant == 0 else f"line_chart_{index:03d}_{mode}"
     filename = f"{sample_id}.png"
-    if index == 2:
+    if variant == 0:
         values = [1, 2, 4, 5, 7]
     else:
         base = 1 + variant
@@ -377,7 +434,7 @@ def _make_line_chart_sample(
         if mode == "peak":
             values = [base, base + 3, base + 7, base + 4, base + 2]
     _plot_line_chart(images_dir / filename, values, "Line Chart")
-    if mode == "trend" or index == 2:
+    if mode == "trend" or variant == 0:
         answer = "overall increasing"
         question = "What is the overall trend of the line chart?"
         keywords = ["overall", "increasing"]
@@ -405,21 +462,26 @@ def _make_line_chart_sample(
 
 
 def _make_pie_chart_sample(
-    index: int, variant: int, split: str, difficulty: str, images_dir: Path
+    index: int,
+    variant: int,
+    split: str,
+    difficulty: str,
+    images_dir: Path,
+    rng: np.random.Generator | None = None,
 ) -> dict[str, Any]:
     modes = ["largest", "percentage", "compare"]
     mode = modes[variant % len(modes)]
-    sample_id = "pie_chart_share_01" if index == 11 else f"pie_chart_{index:03d}_{mode}"
+    sample_id = "pie_chart_share_01" if variant == 0 else f"pie_chart_{index:03d}_{mode}"
     filename = f"{sample_id}.png"
     labels = ["Blue", "Green", "Orange"]
     blue = 40 + (variant % 4) * 5
     green = 30 - (variant % 3) * 5
     orange = 100 - blue - green
     values = [blue, green, orange]
-    if index == 11:
+    if variant == 0:
         values = [50, 30, 20]
     _plot_pie(images_dir / filename, labels, values, "Pie Chart")
-    if mode == "largest" or index == 11:
+    if mode == "largest" or variant == 0:
         largest_idx = int(np.argmax(values))
         answer = f"{labels[largest_idx]}, {values[largest_idx]}%"
         question = "Which slice has the largest share?"
@@ -442,22 +504,27 @@ def _make_pie_chart_sample(
 
 
 def _make_geometry_sample(
-    index: int, variant: int, split: str, difficulty: str, images_dir: Path
+    index: int,
+    variant: int,
+    split: str,
+    difficulty: str,
+    images_dir: Path,
+    rng: np.random.Generator | None = None,
 ) -> dict[str, Any]:
     modes = ["triangle_angle", "rectangle_area", "circle_area", "distance"]
     mode = modes[variant % len(modes)]
-    if index == 4:
+    if variant == 0:
         mode = "triangle_angle"
         sample_id = "triangle_angle_01"
         filename = "triangle_angle_01.png"
         a1, a2 = 50, 60
-    elif index == 12:
+    elif mode == "circle_area" and variant == 2:
         mode = "circle_area"
         sample_id = "circle_radius_01"
         filename = "circle_radius_01.png"
     else:
         sample_id = f"geometry_{index:03d}_{mode}"
-        if index == 44:
+        if mode == "rectangle_area" and variant == 1:
             sample_id = "rectangle_area_01"
         filename = f"{sample_id}.png"
         a1, a2 = 40 + (variant % 4) * 10, 50 + (variant % 3) * 10
@@ -496,7 +563,7 @@ def _make_geometry_sample(
             images_dir,
         )
     if mode == "circle_area":
-        radius = 3 if index == 12 else 2 + (variant % 4)
+        radius = 3 if sample_id == "circle_radius_01" else 2 + (variant % 4)
         _plot_circle(images_dir / filename, radius)
         answer = f"{radius * radius}π"
         return _sample(
@@ -531,18 +598,23 @@ def _make_geometry_sample(
 
 
 def _make_formula_sample(
-    index: int, variant: int, split: str, difficulty: str, images_dir: Path
+    index: int,
+    variant: int,
+    split: str,
+    difficulty: str,
+    images_dir: Path,
+    rng: np.random.Generator | None = None,
 ) -> dict[str, Any]:
     modes = ["derivative", "simplify_fraction", "solve_equation", "integral"]
     mode = modes[variant % len(modes)]
-    if index == 5:
+    if variant == 0:
         mode = "derivative"
         sample_id = "formula_derivative_01"
         filename = "formula_derivative_01.png"
         n = 2
     else:
         sample_id = f"formula_{index:03d}_{mode}"
-        if index == 13:
+        if mode == "simplify_fraction" and variant == 1:
             sample_id = "fraction_simplify_01"
         filename = f"{sample_id}.png"
         n = 2 + (variant % 4)
@@ -615,11 +687,16 @@ def _make_formula_sample(
 
 
 def _make_coordinate_sample(
-    index: int, variant: int, split: str, difficulty: str, images_dir: Path
+    index: int,
+    variant: int,
+    split: str,
+    difficulty: str,
+    images_dir: Path,
+    rng: np.random.Generator | None = None,
 ) -> dict[str, Any]:
     modes = ["point", "distance", "midpoint", "slope"]
     mode = modes[variant % len(modes)]
-    if index == 6:
+    if variant == 0:
         sample_id = "coordinate_point_01"
         filename = "coordinate_point_01.png"
         p = (3, 2)
@@ -675,7 +752,12 @@ def _make_coordinate_sample(
 
 
 def _make_table_sample(
-    index: int, variant: int, split: str, difficulty: str, images_dir: Path
+    index: int,
+    variant: int,
+    split: str,
+    difficulty: str,
+    images_dir: Path,
+    rng: np.random.Generator | None = None,
 ) -> dict[str, Any]:
     modes = ["read", "maximum", "compare", "total"]
     mode = modes[variant % len(modes)]
@@ -712,6 +794,208 @@ def _make_table_sample(
     return _sample(sample_id, filename, question, answer, answer_type, keywords, kb, "table", difficulty, split, images_dir)
 
 
+def _make_statistical_chart_sample(
+    index: int,
+    variant: int,
+    split: str,
+    difficulty: str,
+    images_dir: Path,
+    rng: np.random.Generator | None = None,
+) -> dict[str, Any]:
+    chart_modes = ["bar", "line", "pie", "table"]
+    chart_mode = chart_modes[variant % len(chart_modes)]
+    inner_variant = variant // len(chart_modes)
+    if chart_mode == "bar":
+        sample = _make_bar_chart_sample(index, inner_variant, split, difficulty, images_dir, rng)
+    elif chart_mode == "line":
+        sample = _make_line_chart_sample(index, inner_variant, split, difficulty, images_dir, rng)
+    elif chart_mode == "pie":
+        sample = _make_pie_chart_sample(index, inner_variant, split, difficulty, images_dir, rng)
+    else:
+        sample = _make_table_sample(index, inner_variant, split, difficulty, images_dir, rng)
+    sample["task_type"] = "statistical_chart"
+    return sample
+
+
+def _make_algebra_sample(
+    index: int,
+    variant: int,
+    split: str,
+    difficulty: str,
+    images_dir: Path,
+    rng: np.random.Generator | None = None,
+) -> dict[str, Any]:
+    modes = ["solve_equation", "simplify_fraction", "substitution", "linear_system"]
+    mode = modes[variant % len(modes)]
+    sample_id = f"algebra_{index:04d}_{mode}"
+    filename = f"{sample_id}.png"
+    if mode == "solve_equation":
+        a = 2 + (variant % 9)
+        x_value = 3 + (variant % 7)
+        b = a + x_value
+        _plot_formula(images_dir / filename, rf"$x+{a}={b}$", "Solve for x")
+        return _sample(
+            sample_id,
+            filename,
+            f"Solve for x: x + {a} = {b}.",
+            str(x_value),
+            "number",
+            [str(x_value), "x"],
+            ["kb_solve_linear"],
+            "algebra",
+            difficulty,
+            split,
+            images_dir,
+        )
+    if mode == "simplify_fraction":
+        factor = 2 + (variant % 5)
+        numerator = factor * (variant % 5 + 2)
+        denominator = factor * (variant % 5 + 3)
+        g = math.gcd(numerator, denominator)
+        answer = f"{numerator // g}/{denominator // g}"
+        _plot_formula(images_dir / filename, rf"$\frac{{{numerator}}}{{{denominator}}}$", "Simplify")
+        return _sample(
+            sample_id,
+            filename,
+            f"Simplify the fraction {numerator}/{denominator}.",
+            answer,
+            "expression",
+            [answer, "simplify"],
+            ["kb_fraction_simplify"],
+            "algebra",
+            difficulty,
+            split,
+            images_dir,
+        )
+    if mode == "substitution":
+        coefficient = 2 + (variant % 4)
+        x_value = 1 + (variant % 6)
+        y_value = coefficient * x_value + 1
+        _plot_formula(images_dir / filename, rf"$y={coefficient}x+1,\ x={x_value}$", "Evaluate y")
+        return _sample(
+            sample_id,
+            filename,
+            f"If y = {coefficient}x + 1 and x = {x_value}, what is y?",
+            str(y_value),
+            "number",
+            [str(y_value), "substitution"],
+            ["kb_algebra_substitution"],
+            "algebra",
+            difficulty,
+            split,
+            images_dir,
+        )
+
+    x_value = 2 + (variant % 4)
+    y_value = 1 + (variant % 3)
+    rhs1 = x_value + y_value
+    rhs2 = x_value - y_value
+    _plot_formula(images_dir / filename, rf"$x+y={rhs1},\ x-y={rhs2}$", "Solve system")
+    return _sample(
+        sample_id,
+        filename,
+        f"Solve the system x + y = {rhs1}, x - y = {rhs2}. What is x?",
+        str(x_value),
+        "number",
+        [str(x_value), "system"],
+        ["kb_linear_system"],
+        "algebra",
+        difficulty,
+        split,
+        images_dir,
+    )
+
+
+def _make_linear_algebra_sample(
+    index: int,
+    variant: int,
+    split: str,
+    difficulty: str,
+    images_dir: Path,
+    rng: np.random.Generator | None = None,
+) -> dict[str, Any]:
+    modes = ["vector_components", "vector_sum", "matrix_trace", "matrix_determinant"]
+    mode = modes[variant % len(modes)]
+    sample_id = f"linear_algebra_{index:04d}_{mode}"
+    filename = f"{sample_id}.png"
+    if mode == "vector_components":
+        vector = (1 + variant % 5, 2 + variant % 4)
+        _plot_vector(images_dir / filename, vector)
+        answer = f"({vector[0]}, {vector[1]})"
+        return _sample(
+            sample_id,
+            filename,
+            "What are the components of vector v?",
+            answer,
+            "coordinate",
+            [str(vector[0]), str(vector[1]), "vector"],
+            ["kb_vector_components"],
+            "linear_algebra",
+            difficulty,
+            split,
+            images_dir,
+        )
+    if mode == "vector_sum":
+        v1 = (1 + variant % 4, 2)
+        v2 = (2, 1 + variant % 3)
+        total = (v1[0] + v2[0], v1[1] + v2[1])
+        _plot_two_vectors_from_origin(images_dir / filename, v1, v2)
+        answer = f"({total[0]}, {total[1]})"
+        return _sample(
+            sample_id,
+            filename,
+            "What is v + w for the two shown vectors?",
+            answer,
+            "coordinate",
+            [str(total[0]), str(total[1]), "sum"],
+            ["kb_vector_sum"],
+            "linear_algebra",
+            difficulty,
+            split,
+            images_dir,
+        )
+    if mode == "matrix_trace":
+        a = 1 + variant % 5
+        d = 2 + variant % 6
+        b = variant % 4
+        c = 1 + variant % 3
+        trace = a + d
+        _plot_matrix(images_dir / filename, [[a, b], [c, d]], "Find trace")
+        return _sample(
+            sample_id,
+            filename,
+            "What is the trace of the matrix?",
+            str(trace),
+            "number",
+            [str(trace), "trace"],
+            ["kb_matrix_trace"],
+            "linear_algebra",
+            difficulty,
+            split,
+            images_dir,
+        )
+
+    a = 1 + variant % 4
+    b = variant % 3
+    c = 1
+    d = 2 + variant % 5
+    determinant = a * d - b * c
+    _plot_matrix(images_dir / filename, [[a, b], [c, d]], "Find determinant")
+    return _sample(
+        sample_id,
+        filename,
+        "What is the determinant of the 2x2 matrix?",
+        str(determinant),
+        "number",
+        [str(determinant), "determinant"],
+        ["kb_matrix_determinant"],
+        "linear_algebra",
+        difficulty,
+        split,
+        images_dir,
+    )
+
+
 def _build_knowledge_base() -> list[dict[str, Any]]:
     docs = [
         ("kb_line_slope", "Line slope", "For y = mx + b, the slope is m. Use slope to answer line rate-of-change questions."),
@@ -738,11 +1022,17 @@ def _build_knowledge_base() -> list[dict[str, Any]]:
         ("kb_derivative_power", "Derivative power rule", "The derivative of x^n is n*x^(n-1)."),
         ("kb_fraction_simplify", "Fraction simplification", "Simplify a fraction by dividing numerator and denominator by their greatest common divisor."),
         ("kb_solve_linear", "Solve linear equation", "For x+a=b, subtract a from both sides to get x=b-a."),
+        ("kb_algebra_substitution", "Algebra substitution", "Substitute the given x value into the expression and evaluate the result."),
+        ("kb_linear_system", "Two-equation linear system", "For x+y=a and x-y=b, adding the equations gives 2x=a+b."),
         ("kb_integral_power", "Simple integral", "The integral of 2x is x^2 + C."),
         ("kb_coordinate_point", "Coordinate point reading", "Read a coordinate point as (x,y)."),
         ("kb_coordinate_distance", "Coordinate distance", "Distance between two points is sqrt((x2-x1)^2+(y2-y1)^2)."),
         ("kb_coordinate_midpoint", "Coordinate midpoint", "Midpoint equals ((x1+x2)/2,(y1+y2)/2)."),
         ("kb_coordinate_slope", "Coordinate slope", "Slope between two points is (y2-y1)/(x2-x1)."),
+        ("kb_vector_components", "Vector components", "A vector from the origin to (a,b) has components (a,b)."),
+        ("kb_vector_sum", "Vector sum", "Vector addition adds corresponding components."),
+        ("kb_matrix_trace", "Matrix trace", "The trace of a square matrix is the sum of diagonal entries."),
+        ("kb_matrix_determinant", "2x2 determinant", "For [[a,b],[c,d]], the determinant is ad-bc."),
         ("kb_table_read", "Table reading", "Read a table value by locating the requested row or category."),
         ("kb_table_max", "Table maximum", "The largest table category has the highest value."),
         ("kb_table_compare", "Table comparison", "Compare table categories by their numeric values."),
@@ -899,6 +1189,53 @@ def _plot_two_points(path: Path, p1: tuple[int, int], p2: tuple[int, int]) -> No
     ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color="#9333ea", alpha=0.5)
     ax.annotate(f"({p1[0]},{p1[1]})", xy=p1, xytext=(p1[0] + 0.2, p1[1] + 0.4))
     ax.annotate(f"({p2[0]},{p2[1]})", xy=p2, xytext=(p2[0] + 0.2, p2[1] + 0.4))
+    _save(fig, path)
+
+
+def _plot_vector(path: Path, vector: tuple[int, int]) -> None:
+    fig, ax = plt.subplots(figsize=(5, 4))
+    ax.set_xlim(-1, max(6, vector[0] + 2))
+    ax.set_ylim(-1, max(6, vector[1] + 2))
+    ax.set_xticks(range(-1, int(ax.get_xlim()[1]) + 1))
+    ax.set_yticks(range(-1, int(ax.get_ylim()[1]) + 1))
+    _style_axes(ax, "Vector v")
+    ax.arrow(0, 0, vector[0], vector[1], head_width=0.18, length_includes_head=True, color="#2563eb", linewidth=2)
+    ax.text(vector[0] + 0.2, vector[1] + 0.2, f"v=({vector[0]},{vector[1]})", fontsize=12)
+    _save(fig, path)
+
+
+def _plot_two_vectors_from_origin(
+    path: Path, v1: tuple[int, int], v2: tuple[int, int]
+) -> None:
+    fig, ax = plt.subplots(figsize=(5, 4))
+    max_x = max(v1[0], v2[0], v1[0] + v2[0]) + 2
+    max_y = max(v1[1], v2[1], v1[1] + v2[1]) + 2
+    ax.set_xlim(-1, max(7, max_x))
+    ax.set_ylim(-1, max(7, max_y))
+    ax.set_xticks(range(-1, int(ax.get_xlim()[1]) + 1))
+    ax.set_yticks(range(-1, int(ax.get_ylim()[1]) + 1))
+    _style_axes(ax, "Vector Addition")
+    ax.arrow(0, 0, v1[0], v1[1], head_width=0.18, length_includes_head=True, color="#2563eb", linewidth=2)
+    ax.arrow(0, 0, v2[0], v2[1], head_width=0.18, length_includes_head=True, color="#16a34a", linewidth=2)
+    ax.text(v1[0] + 0.15, v1[1] + 0.15, "v", color="#2563eb", fontsize=12)
+    ax.text(v2[0] + 0.15, v2[1] + 0.15, "w", color="#16a34a", fontsize=12)
+    _save(fig, path)
+
+
+def _plot_matrix(path: Path, matrix: list[list[int]], subtitle: str) -> None:
+    fig, ax = plt.subplots(figsize=(4, 3))
+    ax.axis("off")
+    table = ax.table(
+        cellText=matrix,
+        cellLoc="center",
+        loc="center",
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(18)
+    table.scale(1.2, 1.8)
+    ax.set_title(subtitle, fontsize=13)
+    ax.text(0.16, 0.5, "[", fontsize=44, ha="center", va="center", transform=ax.transAxes)
+    ax.text(0.84, 0.5, "]", fontsize=44, ha="center", va="center", transform=ax.transAxes)
     _save(fig, path)
 
 

@@ -70,18 +70,28 @@ pytest
 
 ## Demo 数据
 
-`scripts/make_demo_data.py` 会生成 100 条本地合成 demo 样本，并按固定随机种子划分为 `train / val / test = 70 / 15 / 15`。这些数据用于验证工程流程，不是正式 benchmark。
+`scripts/make_demo_data.py` 默认生成 1000 条本地合成 demo 样本，也可以通过 `--num_samples` 调整规模。数据按固定随机种子划分为 `train / val / test = 8 / 1 / 1`；默认 1000 条时对应 `800 / 100 / 100`。这些数据用于验证工程流程，不是正式 benchmark。
 
 覆盖的 `task_type` 包括：
 
 - `function_plot`：斜率、截距、抛物线顶点、单调性、交点、周期
-- `bar_chart`：最大值、最小值、差值、总和、排序
-- `line_chart`：趋势、峰值、谷值、增长量
-- `pie_chart`：最大占比、百分比读取、类别比较
 - `geometry`：三角形角度、矩形面积、圆面积、坐标几何
-- `formula`：求导、化简、解简单方程、积分
 - `coordinate`：坐标点读数、两点距离、中点、斜率
-- `table`：简单表格读取、比较、求和
+- `statistical_chart`：柱状图、折线图、饼图、表格读取与比较
+- `algebra`：一元方程、分数化简、代入求值、简单方程组
+- `linear_algebra`：向量分量、向量加法、矩阵 trace、2x2 determinant
+
+生成 1000 条数据：
+
+```bash
+python scripts/make_demo_data.py --num_samples 1000
+```
+
+快速生成小规模调试数据：
+
+```bash
+python scripts/make_demo_data.py --num_samples 100
+```
 
 数据文件：
 
@@ -291,7 +301,7 @@ source .venv/bin/activate
 RUN_MODE=smoke bash scripts/run_qwen_lora_gpu.sh
 ```
 
-full 模式使用最多 100 条 train split 样本、50 个 step：
+full 模式默认生成 1000 条 demo 数据，使用 train split 中最多 1000 条样本训练，`max_steps=300`，并在不少于 100 条 test split 样本上评测 Qwen base 和 Qwen LoRA：
 
 ```bash
 cd /root/autodl-tmp/projects/MathVision-Assistant
@@ -305,7 +315,7 @@ RUN_MODE=full bash scripts/run_qwen_lora_gpu.sh
 RUN_MODE=full MAX_STEPS=20 LORA_R=4 LORA_ALPHA=8 bash scripts/run_qwen_lora_gpu.sh
 ```
 
-降级参数会写入 `train_config.json` 和最终 `report.md`，便于解释实验设置。
+降级参数会写入 `train_config.json` 和最终 `report.md`，便于解释实验设置。`report.md` 也会写入本次数据的 `train / val / test` 数量。
 
 ### 输出目录
 
@@ -336,12 +346,12 @@ runs/YYYYMMDD_HHMMSS/
 - `runs/时间戳/checkpoints/qwen25vl-lora/`：LoRA adapter 和训练配置。
 - `runs/时间戳/metrics/qwen_base/summary.json`：基座模型评测摘要。
 - `runs/时间戳/metrics/qwen_lora/summary.json`：LoRA 后评测摘要。
-- `runs/时间戳/report.md`：baseline 与 LoRA 指标对比。
+- `runs/时间戳/report.md`：数据划分数量、baseline 与 LoRA 指标对比。
 
 ### 注意事项
 
 - LoRA 训练默认只使用 `data/demo/qa_train.jsonl`，评测默认使用 held-out `data/demo/qa_test.jsonl`。
-- 当前 100 条数据是本地合成 demo 数据，适合验证训练、adapter 加载、推理和报告生成，不等同于正式 benchmark。
+- 当前默认 1000 条数据仍然是本地合成 demo 数据，适合验证训练、adapter 加载、推理和报告生成，不等同于正式 benchmark。
 - `scripts/eval_qwen_vl_lora.py` 的指标包括样本数、关键词覆盖率、非空回答率、平均回答长度和平均延迟，主要用于快速检查功能闭环。
 - 如果要做正式效果结论，需要接入 MathVista、ChartQA、DocVQA 等公开数据集，并固定硬件、模型版本、推理参数和随机种子。
 
@@ -384,7 +394,7 @@ python scripts/run_eval.py \
 
 ### 当前结果对比
 
-下面是一次历史本地评测结果，对比原始 SmolVLM-500M-Instruct 和加载 LoRA adapter 后的结果。评测数据是旧版 14 条 demo 样本，不是当前 100 条 split 数据上的正式结论。
+下面是一次历史本地评测结果，对比原始 SmolVLM-500M-Instruct 和加载 LoRA adapter 后的结果。评测数据是旧版 14 条 demo 样本，不是当前可配置规模 demo 数据上的正式结论。
 
 ```bash
 # 原始 SmolVLM
@@ -412,7 +422,7 @@ python scripts/run_eval.py \
 
 当前对比基于旧版 14 条本地合成 demo 样本。LoRA 后 `keyword_coverage` 有小幅提升，`exact_match` 和 `numeric_match` 基本持平。`average_latency` 的下降可能受硬件状态、缓存、运行方式、模型加载方式等因素影响，不能直接归因于 LoRA 带来的稳定推理加速。这组结果主要说明训练、adapter 加载、推理和评测流程已经跑通；更严格结论需要更大的公开数据集、固定环境和重复实验。
 
-当前 100 条合成 demo 数据可以先用 mock backend 在 test split 上检查工程链路：
+当前可配置规模的合成 demo 数据可以先用 mock backend 在 test split 上检查工程链路：
 
 ```bash
 python scripts/run_eval.py \
@@ -424,7 +434,7 @@ python scripts/run_eval.py \
 
 这类 mock 结果只说明数据、检索、评测和报告生成流程可复现，不代表真实模型能力。
 
-当前仓库保留了一次 mock backend 在 100 条合成 demo 的 test split 上的流程检查结果：
+当前仓库保留了一次历史 mock backend 在 100 条合成 demo 的 test split 上的流程检查结果：
 
 | metric | mock test split |
 |---|---:|
@@ -439,7 +449,7 @@ python scripts/run_eval.py \
 
 ## 评测局限
 
-当前评测基于 100 条本地合成 demo 样本，主要用于验证数据构造、检索、VLM 推理、LoRA adapter 加载、评测和 Gradio 演示流程。它属于原型评测，不代表模型在正式数学视觉问答 benchmark 上的泛化能力。
+当前评测基于本地合成 demo 样本，默认生成规模为 1000 条，主要用于验证数据构造、检索、VLM 推理、LoRA adapter 加载、评测和 Gradio 演示流程。它属于原型评测，不代表模型在正式数学视觉问答 benchmark 上的泛化能力。
 
 - `mock` backend 只用于工程 smoke test，不代表真实模型能力。
 - 当前数据虽然加入了 train / val / test 划分，但仍然是合成 demo 数据，不应当等同于公开 benchmark。
@@ -547,7 +557,7 @@ MathVision-Assistant/
 ## 项目边界与后续方向
 
 - `mock` backend 只用于本地测试，不代表真实模型能力。
-- demo 数据是 100 条本地合成数据，适合验证流程，不适合作为正式 benchmark。
+- demo 数据是可配置规模的本地合成数据，默认 1000 条，适合验证流程，不适合作为正式 benchmark。
 - Mac 本地可以跑 SmolVLM 推理和 LoRA dry run，但不适合长时间训练。
 - 后续可以接入 MathVista、ChartQA、DocVQA 等公开数据集。
 - 后续可以增强答案归一化，例如坐标、角度、百分比、`π`、符号表达式。

@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--adapter_dir", default=None, help="LoRA adapter 目录；为空则评测基座模型")
     parser.add_argument("--qa_file", default="data/demo/qa_test.jsonl")
     parser.add_argument("--out_dir", default="reports/qwen_lora_eval")
-    parser.add_argument("--limit_samples", type=int, default=15)
+    parser.add_argument("--limit_samples", type=int, default=100)
     parser.add_argument("--max_new_tokens", type=int, default=128)
     parser.add_argument("--bf16", action="store_true")
     parser.add_argument(

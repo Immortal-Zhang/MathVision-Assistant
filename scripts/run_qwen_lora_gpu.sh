@@ -21,6 +21,43 @@ if [[ "${RUN_MODE}" != "smoke" && "${RUN_MODE}" != "full" ]]; then
   exit 2
 fi
 
+if [[ "${RUN_MODE}" == "smoke" ]]; then
+  DEFAULT_NUM_SAMPLES=100
+  DEFAULT_LIMIT_SAMPLES=2
+  DEFAULT_MAX_STEPS=1
+  DEFAULT_BATCH_SIZE=1
+  DEFAULT_GRAD_ACCUM=1
+  DEFAULT_LORA_R=4
+  DEFAULT_LORA_ALPHA=8
+  DEFAULT_LORA_DROPOUT=0.0
+  DEFAULT_LEARNING_RATE=2e-4
+  DEFAULT_EVAL_LIMIT=3
+else
+  DEFAULT_NUM_SAMPLES=1000
+  DEFAULT_LIMIT_SAMPLES=1000
+  DEFAULT_MAX_STEPS=300
+  DEFAULT_BATCH_SIZE=1
+  DEFAULT_GRAD_ACCUM=4
+  DEFAULT_LORA_R=8
+  DEFAULT_LORA_ALPHA=16
+  DEFAULT_LORA_DROPOUT=0.05
+  DEFAULT_LEARNING_RATE=2e-4
+  DEFAULT_EVAL_LIMIT=100
+fi
+
+NUM_SAMPLES="${NUM_SAMPLES:-${DEFAULT_NUM_SAMPLES}}"
+LIMIT_SAMPLES="${LIMIT_SAMPLES:-${DEFAULT_LIMIT_SAMPLES}}"
+MAX_STEPS="${MAX_STEPS:-${DEFAULT_MAX_STEPS}}"
+BATCH_SIZE="${BATCH_SIZE:-${DEFAULT_BATCH_SIZE}}"
+GRAD_ACCUM="${GRAD_ACCUM:-${DEFAULT_GRAD_ACCUM}}"
+LORA_R="${LORA_R:-${DEFAULT_LORA_R}}"
+LORA_ALPHA="${LORA_ALPHA:-${DEFAULT_LORA_ALPHA}}"
+LORA_DROPOUT="${LORA_DROPOUT:-${DEFAULT_LORA_DROPOUT}}"
+LEARNING_RATE="${LEARNING_RATE:-${DEFAULT_LEARNING_RATE}}"
+EVAL_LIMIT="${EVAL_LIMIT:-${DEFAULT_EVAL_LIMIT}}"
+BF16="${BF16:-true}"
+GRADIENT_CHECKPOINTING="${GRADIENT_CHECKPOINTING:-true}"
+
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 RUN_DIR="runs/${TIMESTAMP}"
 LOG_DIR="${RUN_DIR}/logs"
@@ -37,11 +74,12 @@ echo "== MathVision Qwen2.5-VL LoRA run =="
 echo "run_dir=${RUN_DIR}"
 echo "run_mode=${RUN_MODE}"
 echo "model_name=${MODEL_NAME}"
+echo "num_samples=${NUM_SAMPLES}"
 echo "attn_implementation=${ATTN_IMPLEMENTATION}"
 
 python scripts/check_gpu_env.py --out_file "${METRICS_DIR}/env.json"
 
-python scripts/make_demo_data.py
+python scripts/make_demo_data.py --num_samples "${NUM_SAMPLES}" --train_ratio 0.8 --val_ratio 0.1
 python scripts/run_smoke_test.py --backend mock
 python scripts/run_eval.py --backend mock --top_k 3 --out_dir "${METRICS_DIR}/mock_all"
 python scripts/run_eval.py \
@@ -54,40 +92,6 @@ LORA_TRAIN_FILE="${DATA_DIR}/lora_qwen_vl_train.jsonl"
 python scripts/prepare_lora_data.py \
   --qa_file data/demo/qa_train.jsonl \
   --out_file "${LORA_TRAIN_FILE}"
-
-if [[ "${RUN_MODE}" == "smoke" ]]; then
-  DEFAULT_LIMIT_SAMPLES=2
-  DEFAULT_MAX_STEPS=1
-  DEFAULT_BATCH_SIZE=1
-  DEFAULT_GRAD_ACCUM=1
-  DEFAULT_LORA_R=4
-  DEFAULT_LORA_ALPHA=8
-  DEFAULT_LORA_DROPOUT=0.0
-  DEFAULT_LEARNING_RATE=2e-4
-  DEFAULT_EVAL_LIMIT=3
-else
-  DEFAULT_LIMIT_SAMPLES=100
-  DEFAULT_MAX_STEPS=50
-  DEFAULT_BATCH_SIZE=1
-  DEFAULT_GRAD_ACCUM=4
-  DEFAULT_LORA_R=8
-  DEFAULT_LORA_ALPHA=16
-  DEFAULT_LORA_DROPOUT=0.05
-  DEFAULT_LEARNING_RATE=2e-4
-  DEFAULT_EVAL_LIMIT=15
-fi
-
-LIMIT_SAMPLES="${LIMIT_SAMPLES:-${DEFAULT_LIMIT_SAMPLES}}"
-MAX_STEPS="${MAX_STEPS:-${DEFAULT_MAX_STEPS}}"
-BATCH_SIZE="${BATCH_SIZE:-${DEFAULT_BATCH_SIZE}}"
-GRAD_ACCUM="${GRAD_ACCUM:-${DEFAULT_GRAD_ACCUM}}"
-LORA_R="${LORA_R:-${DEFAULT_LORA_R}}"
-LORA_ALPHA="${LORA_ALPHA:-${DEFAULT_LORA_ALPHA}}"
-LORA_DROPOUT="${LORA_DROPOUT:-${DEFAULT_LORA_DROPOUT}}"
-LEARNING_RATE="${LEARNING_RATE:-${DEFAULT_LEARNING_RATE}}"
-EVAL_LIMIT="${EVAL_LIMIT:-${DEFAULT_EVAL_LIMIT}}"
-BF16="${BF16:-true}"
-GRADIENT_CHECKPOINTING="${GRADIENT_CHECKPOINTING:-true}"
 
 BF16_ARGS=()
 if [[ "${BF16}" == "true" ]]; then
@@ -145,6 +149,16 @@ base = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
 lora = json.loads(Path(sys.argv[4]).read_text(encoding="utf-8"))
 train_config = json.loads(Path(sys.argv[5]).read_text(encoding="utf-8"))
 report_file = Path(sys.argv[6])
+split_counts = {}
+for split_name, split_path in {
+    "train": Path("data/demo/qa_train.jsonl"),
+    "val": Path("data/demo/qa_val.jsonl"),
+    "test": Path("data/demo/qa_test.jsonl"),
+}.items():
+    if split_path.exists():
+        split_counts[split_name] = sum(1 for line in split_path.read_text(encoding="utf-8").splitlines() if line.strip())
+    else:
+        split_counts[split_name] = 0
 
 metric_keys = ["num_samples", "keyword_coverage", "non_empty_rate", "average_answer_length", "average_latency_seconds"]
 lines = [
@@ -162,6 +176,17 @@ lines = [
     f"- lora_r: {train_config['lora_r']}",
     f"- lora_alpha: {train_config['lora_alpha']}",
     f"- attention: `{train_config['attn_implementation']}`",
+    f"- train samples: {split_counts['train']}",
+    f"- val samples: {split_counts['val']}",
+    f"- test samples: {split_counts['test']}",
+    "",
+    "## Data Split",
+    "",
+    "| split | count |",
+    "|---|---:|",
+    f"| train | {split_counts['train']} |",
+    f"| val | {split_counts['val']} |",
+    f"| test | {split_counts['test']} |",
     "",
     "## Baseline vs LoRA",
     "",
@@ -177,7 +202,7 @@ for key in metric_keys:
         lines.append(f"| {key} | {base_value} | {lora_value} | - |")
 
 notes = []
-if run_mode == "full" and (train_config["max_steps"] < 50 or train_config["lora_r"] < 8):
+if run_mode == "full" and (train_config["max_steps"] < 300 or train_config["lora_r"] < 8):
     notes.append("本次 full run 使用了降级参数，可能是为了显存或速度控制；结果应按功能性验证解读。")
 if not notes:
     notes.append("未检测到 full 参数降级。")
