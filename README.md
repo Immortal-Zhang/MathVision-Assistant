@@ -263,6 +263,29 @@ reports/eval_summary.md
 python scripts/run_eval.py --backend mock --top_k 3
 ```
 
+### 当前结果
+
+下面是一次本地评测结果，使用 SmolVLM-500M-Instruct 加载 LoRA adapter，在 14 条 demo 样本上运行：
+
+```bash
+python scripts/run_eval.py \
+  --backend smolvlm \
+  --lora_adapter checkpoints/smolvlm500m-lora-mathvision-all \
+  --top_k 3 \
+  --out_dir reports/smolvlm_lora_all
+```
+
+| metric | value |
+|---|---:|
+| num_samples | 14 |
+| exact_match | 0.7143 |
+| numeric_match | 0.5714 |
+| keyword_coverage | 0.6548 |
+| retrieval_recall_at_k | 1.0000 |
+| average_latency | 5.9828s |
+
+这组结果来自本地合成 demo 数据，主要用于检查完整流程和观察错误样本。更严格的效果对比需要接入更大的公开数据集。
+
 ## Gradio 页面
 
 页面示例：
