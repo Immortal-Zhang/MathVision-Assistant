@@ -350,46 +350,40 @@ runs/YYYYMMDD_HHMMSS/
 
 ### 已完成的 full run 记录
 
-一次 RTX 5090 full run 已完成并整理在 [docs/rtx5090_qwen_lora_report.md](docs/rtx5090_qwen_lora_report.md)。
+RTX 5090 full run 实验记录已整理在 [docs/rtx5090_qwen_lora_report.md](docs/rtx5090_qwen_lora_report.md)。当前结果仍然是本地合成 demo 数据上的功能性评测，不等同于正式 benchmark。
 
-实验设置：
+第一轮实验跑通了 Qwen2.5-VL LoRA 工程闭环，但出现短答退化：LoRA 后 `keyword_coverage` 从 0.9017 下降到 0.5533，`average_answer_length` 从 233.6800 下降到 3.2000。因此这轮不能写成 LoRA 提升效果。
 
-- run_dir：`runs/20260510_194349`
+第二轮修复实验针对短答退化做了四项调整：
+
+1. LoRA 训练数据使用 `answer_style=explain`，assistant 目标改为“答案 + 一句话依据”。
+2. SFT loss 改为 assistant-only loss mask，只对 assistant 回答计算 loss。
+3. base 和 LoRA 评测统一使用 `answer_then_reason` prompt。
+4. 新增 `too_short_rate`、`exact_match`、`numeric_match` 和 bad case 分析。
+
+第二轮实验设置：
+
+- run_dir：`runs/20260510_210429`
 - 模型：Qwen2.5-VL-3B-Instruct
 - 数据：本地合成 demo 数据，`train / val / test = 800 / 100 / 100`
 - 训练：PEFT-LoRA，`max_steps=300`，`limit_samples=1000`，`lora_r=8`，`lora_alpha=16`
 - attention：`sdpa`
+- prompt_style：`answer_then_reason`
+- eval max_new_tokens：96
 
-结果摘要：
+第二轮结果摘要：
 
 | metric | Qwen2.5-VL base | Qwen2.5-VL + LoRA | delta |
 |---|---:|---:|---:|
 | num_samples | 100.0000 | 100.0000 | +0.0000 |
-| keyword_coverage | 0.9017 | 0.5533 | -0.3483 |
-| non_empty_rate | 1.0000 | 1.0000 | +0.0000 |
-| average_answer_length | 233.6800 | 3.2000 | -230.4800 |
-| average_latency_seconds | 1.6419 | 0.1953 | -1.4466 |
+| exact_match | 0.2100 | 0.0000 | -0.2100 |
+| numeric_match | 0.6000 | 0.7600 | +0.1600 |
+| too_short_rate | 0.2700 | 0.0000 | -0.2700 |
+| keyword_coverage | 0.4817 | 0.8650 | +0.3833 |
+| average_answer_length | 26.7400 | 56.1100 | +29.3700 |
+| average_latency_seconds | 0.5091 | 0.7699 | +0.2608 |
 
-这次结果说明工程闭环已经跑通，但不能说明 LoRA 提升了模型能力。LoRA 后 `keyword_coverage` 从 0.9017 下降到 0.5533，`average_answer_length` 下降到 3.2，说明当前数据规模、训练策略、答案格式或评测方式仍需改进。平均延迟下降也不能直接视为效果提升，因为 LoRA 后输出明显变短。
-
-### 下一轮 LoRA 修复实验
-
-上一轮 Qwen2.5-VL LoRA full run 的主要问题是 LoRA 后回答明显变短，`keyword_coverage` 下降，不能写成效果提升。当前代码已经针对这个问题做了下一轮实验准备：
-
-1. LoRA 训练数据默认使用 `answer_style=explain`，assistant 目标改为“答案 + 一句话依据”。
-2. Qwen SFT collator 改为 assistant-only loss mask，只对 assistant 回答部分计算 loss，不对用户问题、图像占位和 prompt 部分计算 loss。
-3. Qwen base 和 Qwen LoRA 评测统一使用 `answer_then_reason` prompt，要求先给答案再用一句话说明依据。
-4. 新增 `too_short_rate`、`exact_match`、`numeric_match`，并新增 bad case 分析脚本。
-
-下一轮服务器实验可以这样运行：
-
-```bash
-MODEL_NAME=/root/autodl-tmp/models/Qwen/Qwen2___5-VL-3B-Instruct \
-RUN_MODE=full \
-bash scripts/run_qwen_lora_gpu.sh
-```
-
-这次修复只是让训练目标、评测目标和报告分析更一致，不代表已经证明 LoRA 会提升效果。是否改善需要下一轮 RTX 5090 实验报告来判断。
+第二轮结果显示，短答退化被明显缓解：`too_short_rate` 从 0.27 降到 0，`average_answer_length` 从 26.74 增加到 56.11；`numeric_match` 从 0.60 到 0.76，`keyword_coverage` 从 0.4817 到 0.8650。与此同时，`exact_match` 下降到 0，主要原因是 LoRA 输出变成“答案 + 依据”的解释型格式，与短 reference 做完全字符串匹配不再适配。因此 `exact_match` 不应单独作为解释型回答质量指标。
 
 ### 注意事项
 
