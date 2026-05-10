@@ -13,6 +13,9 @@ data/outputs/
 reports/**/*.csv
 reports/**/*.md
 !reports/README.md
+!reports/smolvlm/
+!reports/smolvlm/eval_results.csv
+!reports/smolvlm/eval_summary.md
 !reports/smolvlm_lora_all/
 !reports/smolvlm_lora_all/eval_results.csv
 !reports/smolvlm_lora_all/eval_summary.md

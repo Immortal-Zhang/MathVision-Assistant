@@ -1,0 +1,17 @@
+id,image,question,reference_answer,prediction,exact_match,numeric_match,keyword_coverage,retrieval_recall_at_k,latency_seconds,retrieved_ids
+line_slope_01,data/demo/images/line_slope_01.png,What is the slope of the line?,2,2,1.0,1.0,0.5,1.0,11.045042458,"kb_line_slope_01,kb_formula_derivative_01,kb_line_chart_trend_01"
+parabola_vertex_01,data/demo/images/parabola_vertex_01.png,What is the vertex of the parabola?,"(1, 0)","[1, 0]",0.0,1.0,0.6666666666666666,1.0,9.420660917,"kb_parabola_vertex_01,kb_formula_derivative_01,kb_coordinate_point_01"
+bar_chart_max_01,data/demo/images/bar_chart_max_01.png,Which category has the maximum value?,C,C,1.0,0.0,0.5,1.0,7.190723958000003,"kb_bar_chart_max_01,kb_parabola_vertex_01,kb_sine_period_01"
+line_chart_trend_01,data/demo/images/line_chart_trend_01.png,What is the overall trend of the line chart?,overall increasing,"[证据1] Line chart increasing trend: The plotted values rise from left to right, so the trend is overall increasing.
+
+Answer: The overall trend of the line chart is increasing.",1.0,0.0,1.0,1.0,8.504119583000001,"kb_line_chart_trend_01,kb_line_slope_01,kb_formula_derivative_01"
+triangle_angle_01,data/demo/images/triangle_angle_01.png,Two angles are 50 and 60 degrees. What is the third angle?,70,70,1.0,1.0,0.5,1.0,6.945460292,"kb_triangle_angle_01,kb_histogram_total_01,kb_pie_chart_share_01"
+circle_radius_01,data/demo/images/circle_radius_01.png,The radius is 3. What is the area of the circle?,9π,9*pi.,1.0,1.0,0.6666666666666666,1.0,6.854164875000002,"kb_circle_radius_01,kb_formula_derivative_01,kb_rectangle_area_01"
+formula_derivative_01,data/demo/images/formula_derivative_01.png,What is the derivative of f(x)=x^2?,2x,Find derivative.,0.0,0.0,0.5,1.0,3.6207939999999965,"kb_formula_derivative_01,kb_coordinate_point_01,kb_circle_radius_01"
+coordinate_point_01,data/demo/images/coordinate_point_01.png,What are the coordinates of the marked point?,"(3, 2)","(3,2)",0.0,0.0,0.6666666666666666,1.0,7.798603707999995,"kb_coordinate_point_01,kb_formula_derivative_01,kb_histogram_total_01"
+histogram_total_01,data/demo/images/histogram_total_01.png,What is the total count shown by the three bars?,18,18,1.0,1.0,0.5,1.0,7.069991375000008,"kb_histogram_total_01,kb_fraction_simplify_01,kb_bar_chart_max_01"
+rectangle_area_01,data/demo/images/rectangle_area_01.png,What is the area of the rectangle?,24,24.,1.0,1.0,0.5,1.0,7.029470415999995,"kb_rectangle_area_01,kb_circle_radius_01,kb_formula_derivative_01"
+fraction_simplify_01,data/demo/images/fraction_simplify_01.png,Simplify the fraction 6/8.,3/4,3/4,1.0,1.0,0.5,1.0,3.6529384170000014,"kb_fraction_simplify_01,kb_line_chart_trend_01,kb_parabola_vertex_01"
+scatter_correlation_01,data/demo/images/scatter_correlation_01.png,What type of correlation does the scatter plot show?,positive correlation,Positive correlation.,1.0,0.0,1.0,1.0,7.0656690409999925,"kb_scatter_correlation_01,kb_formula_derivative_01,kb_line_chart_trend_01"
+sine_period_01,data/demo/images/sine_period_01.png,What is the period of the sine curve?,2π,2*pi.,1.0,1.0,0.6666666666666666,1.0,7.961765083000003,"kb_sine_period_01,kb_formula_derivative_01,kb_coordinate_point_01"
+pie_chart_share_01,data/demo/images/pie_chart_share_01.png,Which slice has the largest share?,"Blue, 50%",Blue.,0.0,0.0,0.5,1.0,7.204108042000001,"kb_pie_chart_share_01,kb_parabola_vertex_01,kb_sine_period_01"

@@ -263,11 +263,18 @@ reports/eval_summary.md
 python scripts/run_eval.py --backend mock --top_k 3
 ```
 
-### 当前结果
+### 当前结果对比
 
-下面是一次本地评测结果，使用 SmolVLM-500M-Instruct 加载 LoRA adapter，在 14 条 demo 样本上运行：
+下面是一次本地评测结果，对比原始 SmolVLM-500M-Instruct 和加载 LoRA adapter 后的结果。评测数据是 14 条 demo 样本。
 
 ```bash
+# 原始 SmolVLM
+python scripts/run_eval.py \
+  --backend smolvlm \
+  --top_k 3 \
+  --out_dir reports/smolvlm
+
+# SmolVLM + LoRA
 python scripts/run_eval.py \
   --backend smolvlm \
   --lora_adapter checkpoints/smolvlm500m-lora-mathvision-all \
@@ -275,16 +282,16 @@ python scripts/run_eval.py \
   --out_dir reports/smolvlm_lora_all
 ```
 
-| metric | value |
-|---|---:|
-| num_samples | 14 |
-| exact_match | 0.7143 |
-| numeric_match | 0.5714 |
-| keyword_coverage | 0.6548 |
-| retrieval_recall_at_k | 1.0000 |
-| average_latency | 5.9828s |
+| metric | SmolVLM | SmolVLM + LoRA | change |
+|---|---:|---:|---:|
+| num_samples | 14 | 14 | - |
+| exact_match | 0.7143 | 0.7143 | +0.0000 |
+| numeric_match | 0.5714 | 0.5714 | +0.0000 |
+| keyword_coverage | 0.6190 | 0.6548 | +0.0358 |
+| retrieval_recall_at_k | 1.0000 | 1.0000 | +0.0000 |
+| average_latency | 7.2403s | 5.9828s | -1.2575s |
 
-这组结果来自本地合成 demo 数据，主要用于检查完整流程和观察错误样本。更严格的效果对比需要接入更大的公开数据集。
+这次 LoRA 训练使用的是小规模 demo 数据，因此结果主要说明训练、加载和评测流程可以跑通。从当前结果看，LoRA 后 `keyword_coverage` 有小幅提升，`exact_match` 和 `numeric_match` 基本持平。更严格的效果对比需要接入更大的公开数据集，并在固定硬件和随机种子下重复评测。
 
 ## Gradio 页面
 
