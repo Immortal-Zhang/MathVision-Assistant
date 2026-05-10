@@ -16,8 +16,18 @@ from mathvision.io_utils import ensure_parent, read_jsonl
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="准备 Qwen2.5-VL LoRA 微调数据")
-    parser.add_argument("--qa_file", default="data/demo/qa.jsonl")
-    parser.add_argument("--output_file", default="data/outputs/lora_qwen_vl.jsonl")
+    parser.add_argument(
+        "--qa_file",
+        default="data/demo/qa_train.jsonl",
+        help="输入 QA JSONL，默认只使用 train split，避免评测数据泄漏。",
+    )
+    parser.add_argument(
+        "--out_file",
+        "--output_file",
+        dest="out_file",
+        default="data/outputs/lora_qwen_vl_train.jsonl",
+        help="输出 LoRA 训练 JSONL。--output_file 作为旧参数别名保留。",
+    )
     return parser.parse_args()
 
 
@@ -46,7 +56,7 @@ def convert_record(record: dict[str, object]) -> dict[str, object]:
 def main() -> None:
     args = parse_args()
     records = read_jsonl(args.qa_file)
-    output_path = ensure_parent(args.output_file)
+    output_path = ensure_parent(args.out_file)
     with output_path.open("w", encoding="utf-8") as file:
         for record in records:
             file.write(json.dumps(convert_record(record), ensure_ascii=False) + "\n")

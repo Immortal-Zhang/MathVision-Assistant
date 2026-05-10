@@ -19,6 +19,9 @@ reports/**/*.md
 !reports/smolvlm_lora_all/
 !reports/smolvlm_lora_all/eval_results.csv
 !reports/smolvlm_lora_all/eval_summary.md
+!reports/mock_test/
+!reports/mock_test/eval_results.csv
+!reports/mock_test/eval_summary.md
 
 # Model / training artifacts
 checkpoints/

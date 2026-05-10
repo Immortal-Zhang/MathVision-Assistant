@@ -70,24 +70,27 @@ pytest
 
 ## Demo 数据
 
-`scripts/make_demo_data.py` 会生成一组小型合成数据，包含：
+`scripts/make_demo_data.py` 会生成 100 条本地合成 demo 样本，并按固定随机种子划分为 `train / val / test = 70 / 15 / 15`。这些数据用于验证工程流程，不是正式 benchmark。
 
-- 直线斜率
-- 抛物线顶点
-- 柱状图最大值
-- 折线图趋势
-- 三角形角度
-- 圆面积
-- 简单公式截图
-- 坐标点读数
-- 分数化简
-- 散点图相关性
+覆盖的 `task_type` 包括：
+
+- `function_plot`：斜率、截距、抛物线顶点、单调性、交点、周期
+- `bar_chart`：最大值、最小值、差值、总和、排序
+- `line_chart`：趋势、峰值、谷值、增长量
+- `pie_chart`：最大占比、百分比读取、类别比较
+- `geometry`：三角形角度、矩形面积、圆面积、坐标几何
+- `formula`：求导、化简、解简单方程、积分
+- `coordinate`：坐标点读数、两点距离、中点、斜率
+- `table`：简单表格读取、比较、求和
 
 数据文件：
 
 ```text
 data/demo/images/
 data/demo/qa.jsonl
+data/demo/qa_train.jsonl
+data/demo/qa_val.jsonl
+data/demo/qa_test.jsonl
 data/demo/knowledge_base.jsonl
 ```
 
@@ -101,7 +104,10 @@ data/demo/knowledge_base.jsonl
   "answer": "2",
   "answer_type": "number",
   "keywords": ["slope", "2"],
-  "related_knowledge_ids": ["kb_line_slope_01"]
+  "related_knowledge_ids": ["kb_line_slope"],
+  "task_type": "function_plot",
+  "difficulty": "easy",
+  "split": "train"
 }
 ```
 
@@ -109,10 +115,10 @@ data/demo/knowledge_base.jsonl
 
 ```json
 {
-  "id": "kb_line_slope_01",
-  "title": "Line slope y=2x+1",
-  "content": "For a line y = mx + b, the slope is m. In y=2x+1, m=2.",
-  "source_image": "data/demo/images/line_slope_01.png"
+  "id": "kb_line_slope",
+  "title": "Line slope",
+  "content": "For y = mx + b, the slope is m. Use slope to answer line rate-of-change questions.",
+  "source_image": null
 }
 ```
 
@@ -170,7 +176,7 @@ pip install -U transformers accelerate
 
 ### 准备数据
 
-LoRA 训练数据由 `qa.jsonl` 转换得到：
+LoRA 训练数据默认只从 `data/demo/qa_train.jsonl` 转换得到，避免把验证集或测试集样本混入训练数据：
 
 ```bash
 python scripts/prepare_lora_data.py
@@ -179,8 +185,10 @@ python scripts/prepare_lora_data.py
 输出文件：
 
 ```text
-data/outputs/lora_qwen_vl.jsonl
+data/outputs/lora_qwen_vl_train.jsonl
 ```
+
+评测 LoRA adapter 时建议使用 held-out test split，例如 `data/demo/qa_test.jsonl`。在小规模合成 demo 数据上的 LoRA 对比主要用于验证训练、adapter 加载、推理和评测流程，不应解读为稳定的效果提升结论。
 
 ### SmolVLM LoRA
 
@@ -193,7 +201,7 @@ pip install peft datasets
 
 python scripts/train_lora_smolvlm_gpu.py \
   --model_name HuggingFaceTB/SmolVLM-500M-Instruct \
-  --train_file data/outputs/lora_qwen_vl.jsonl \
+  --train_file data/outputs/lora_qwen_vl_train.jsonl \
   --output_dir checkpoints/smolvlm500m-lora-mathvision-debug \
   --allow_non_cuda \
   --max_steps 1 \
@@ -222,6 +230,7 @@ python scripts/run_eval.py \
   --backend smolvlm \
   --lora_adapter checkpoints/smolvlm500m-lora-mathvision-debug \
   --top_k 3 \
+  --qa_file data/demo/qa_test.jsonl \
   --out_dir reports/smolvlm_lora
 ```
 
@@ -234,7 +243,7 @@ pip install peft trl datasets qwen-vl-utils
 
 python scripts/train_lora_qwen_vl_gpu.py \
   --model_name Qwen/Qwen2.5-VL-3B-Instruct \
-  --train_file data/outputs/lora_qwen_vl.jsonl \
+  --train_file data/outputs/lora_qwen_vl_train.jsonl \
   --output_dir checkpoints/qwen25vl-lora-mathvision
 ```
 
@@ -265,9 +274,21 @@ reports/eval_summary.md
 python scripts/run_eval.py --backend mock --top_k 3
 ```
 
+也可以指定评测文件，例如只在 test split 上评测：
+
+```bash
+python scripts/run_eval.py \
+  --backend mock \
+  --top_k 3 \
+  --qa_file data/demo/qa_test.jsonl \
+  --out_dir reports/mock_test
+```
+
+`eval_summary.md` 会输出整体 summary，并按 `task_type` 生成分组汇总。`eval_results.csv` 会保留逐样本的 `task_type`、`difficulty`、`split` 字段，便于后续分析不同题型的表现。
+
 ### 当前结果对比
 
-下面是一次本地评测结果，对比原始 SmolVLM-500M-Instruct 和加载 LoRA adapter 后的结果。评测数据是 14 条 demo 样本。
+下面是一次历史本地评测结果，对比原始 SmolVLM-500M-Instruct 和加载 LoRA adapter 后的结果。评测数据是旧版 14 条 demo 样本，不是当前 100 条 split 数据上的正式结论。
 
 ```bash
 # 原始 SmolVLM
@@ -293,19 +314,46 @@ python scripts/run_eval.py \
 | retrieval_recall_at_k | 1.0000 | 1.0000 | +0.0000 |
 | average_latency | 7.2403s | 5.9828s | -1.2575s |
 
-当前对比基于 14 条本地合成 demo 样本。LoRA 后 `keyword_coverage` 有小幅提升，`exact_match` 和 `numeric_match` 基本持平。`average_latency` 的下降可能受硬件状态、缓存、运行方式、模型加载方式等因素影响，不能直接归因于 LoRA 带来的稳定推理加速。这组结果主要说明训练、adapter 加载、推理和评测流程已经跑通；更严格结论需要更大的公开数据集、固定环境和重复实验。
+当前对比基于旧版 14 条本地合成 demo 样本。LoRA 后 `keyword_coverage` 有小幅提升，`exact_match` 和 `numeric_match` 基本持平。`average_latency` 的下降可能受硬件状态、缓存、运行方式、模型加载方式等因素影响，不能直接归因于 LoRA 带来的稳定推理加速。这组结果主要说明训练、adapter 加载、推理和评测流程已经跑通；更严格结论需要更大的公开数据集、固定环境和重复实验。
+
+当前 100 条合成 demo 数据可以先用 mock backend 在 test split 上检查工程链路：
+
+```bash
+python scripts/run_eval.py \
+  --backend mock \
+  --top_k 3 \
+  --qa_file data/demo/qa_test.jsonl \
+  --out_dir reports/mock_test
+```
+
+这类 mock 结果只说明数据、检索、评测和报告生成流程可复现，不代表真实模型能力。
+
+当前仓库保留了一次 mock backend 在 100 条合成 demo 的 test split 上的流程检查结果：
+
+| metric | mock test split |
+|---|---:|
+| num_samples | 15 |
+| exact_match | 1.0000 |
+| numeric_match | 0.7333 |
+| keyword_coverage | 0.5889 |
+| retrieval_recall_at_k | 0.8667 |
+| average_latency | 0.0016s |
+
+由于 mock backend 会读取本地 demo 标注答案，这个表只能说明数据划分、检索、评测和报告生成链路正常，不能代表真实 VLM 的视觉理解能力。
 
 ## 评测局限
 
-当前评测基于 14 条本地合成 demo 样本，主要用于验证数据构造、检索、VLM 推理、LoRA adapter 加载、评测和 Gradio 演示流程。它属于原型评测，不代表模型在正式数学视觉问答 benchmark 上的泛化能力。
+当前评测基于 100 条本地合成 demo 样本，主要用于验证数据构造、检索、VLM 推理、LoRA adapter 加载、评测和 Gradio 演示流程。它属于原型评测，不代表模型在正式数学视觉问答 benchmark 上的泛化能力。
 
 - `mock` backend 只用于工程 smoke test，不代表真实模型能力。
+- 当前数据虽然加入了 train / val / test 划分，但仍然是合成 demo 数据，不应当等同于公开 benchmark。
 - `exact_match` 对数学等价表达较严格。例如坐标写法、符号表达式、`π`、百分比、单位等都可能需要更细的 answer normalization。
 - `numeric_match` 只能验证数值是否匹配，不能完整判断单位、语义和推理过程是否正确。
 - `keyword_coverage` 只能粗略反映概念覆盖，不能代表事实或推理完全正确。
 - `retrieval_recall_at_k` 只衡量相关 evidence 是否被检索到，不代表模型正确使用了这些 evidence。
 - `average_latency` 可能受硬件、缓存、运行状态、模型加载方式影响，不能单独解释为 LoRA 带来的稳定加速。
-- 更可靠的效果对比需要接入更大的公开数据集，并固定模型版本、硬件环境、推理参数和随机种子，进行重复评测。
+- LoRA 效果需要在 held-out test split 和更大数据集上验证，不能根据小规模 demo 对比下结论。
+- 更可靠的效果对比需要接入 MathVista、ChartQA、DocVQA 等公开数据集，并固定模型版本、硬件环境、推理参数和随机种子，进行重复评测。
 
 ## 正式 Benchmark 方案
 
@@ -403,7 +451,7 @@ MathVision-Assistant/
 ## 项目边界与后续方向
 
 - `mock` backend 只用于本地测试，不代表真实模型能力。
-- demo 数据是合成数据，适合验证流程，不适合作为正式 benchmark。
+- demo 数据是 100 条本地合成数据，适合验证流程，不适合作为正式 benchmark。
 - Mac 本地可以跑 SmolVLM 推理和 LoRA dry run，但不适合长时间训练。
 - 后续可以接入 MathVista、ChartQA、DocVQA 等公开数据集。
 - 后续可以增强答案归一化，例如坐标、角度、百分比、`π`、符号表达式。

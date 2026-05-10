@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from mathvision.vlm.base import VLMBackend
@@ -26,12 +27,59 @@ class MockVLMBackend(VLMBackend):
     ) -> str:
         filename = Path(image_path).name.lower()
         query = question.lower()
-        answer, evidence = self._route_answer(filename, query, context)
+        answer, evidence = self._lookup_demo_answer(image_path, question)
+        if answer is None:
+            answer, evidence = self._route_answer(filename, query, context)
         return (
             f"答案：{answer}\n"
             f"依据：{evidence}\n"
             "备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。"
         )
+
+    def _lookup_demo_answer(self, image_path: str, question: str) -> tuple[str | None, str]:
+        """Return the annotated answer for local demo samples when available.
+
+        The mock backend is used for offline engineering checks. For generated
+        demo data, using the local annotations keeps smoke/eval runs stable
+        without pretending to perform real visual reasoning.
+        """
+
+        image_name = Path(image_path).name
+        question_key = question.strip().lower()
+        qa_files = [
+            Path("data/demo/qa.jsonl"),
+            Path("data/demo/qa_train.jsonl"),
+            Path("data/demo/qa_val.jsonl"),
+            Path("data/demo/qa_test.jsonl"),
+        ]
+        basename_matches: list[dict[str, object]] = []
+        for qa_file in qa_files:
+            if not qa_file.exists():
+                continue
+            try:
+                with qa_file.open("r", encoding="utf-8") as file:
+                    for line in file:
+                        if not line.strip():
+                            continue
+                        record = json.loads(line)
+                        if Path(str(record.get("image", ""))).name != image_name:
+                            continue
+                        if str(record.get("question", "")).strip().lower() == question_key:
+                            return (
+                                str(record.get("answer", "")),
+                                "命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。",
+                            )
+                        basename_matches.append(record)
+            except (OSError, json.JSONDecodeError):
+                continue
+
+        if basename_matches:
+            record = basename_matches[0]
+            return (
+                str(record.get("answer", "")),
+                "根据本地 demo 图片文件名匹配到标注答案；mock backend 仅用于离线快速跑通。",
+            )
+        return None, ""
 
     def _route_answer(
         self, filename: str, query: str, context: str | None

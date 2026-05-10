@@ -1,14 +1,33 @@
-{"id": "kb_line_slope_01", "title": "Line slope y=2x+1", "content": "For a line y = mx + b, the slope is m. In y=2x+1, m=2.", "source_image": "data/demo/images/line_slope_01.png"}
-{"id": "kb_parabola_vertex_01", "title": "Parabola vertex y=(x-1)^2", "content": "The graph y=(x-1)^2 has its vertex at (1,0).", "source_image": "data/demo/images/parabola_vertex_01.png"}
-{"id": "kb_bar_chart_max_01", "title": "Bar chart maximum category", "content": "The bars A, B, C have values 3, 5, and 8. Category C is maximum.", "source_image": "data/demo/images/bar_chart_max_01.png"}
-{"id": "kb_line_chart_trend_01", "title": "Line chart increasing trend", "content": "The plotted values rise from left to right, so the trend is overall increasing.", "source_image": "data/demo/images/line_chart_trend_01.png"}
-{"id": "kb_triangle_angle_01", "title": "Triangle angle sum", "content": "Angles in a triangle sum to 180 degrees, so 180-50-60=70.", "source_image": "data/demo/images/triangle_angle_01.png"}
-{"id": "kb_circle_radius_01", "title": "Circle area with radius 3", "content": "Circle area is pi*r^2. With radius 3, the area is 9*pi.", "source_image": "data/demo/images/circle_radius_01.png"}
-{"id": "kb_formula_derivative_01", "title": "Derivative of x squared", "content": "Using the power rule, d/dx x^2 = 2x.", "source_image": "data/demo/images/formula_derivative_01.png"}
-{"id": "kb_coordinate_point_01", "title": "Coordinate point reading", "content": "The marked point is located at x=3 and y=2, so its coordinate is (3,2).", "source_image": "data/demo/images/coordinate_point_01.png"}
-{"id": "kb_histogram_total_01", "title": "Histogram total count", "content": "The three bar values are 4, 6, and 8. Their sum is 18.", "source_image": "data/demo/images/histogram_total_01.png"}
-{"id": "kb_rectangle_area_01", "title": "Rectangle area", "content": "A rectangle with length 6 and width 4 has area 6*4=24.", "source_image": "data/demo/images/rectangle_area_01.png"}
-{"id": "kb_fraction_simplify_01", "title": "Fraction simplification", "content": "The fraction 6/8 can be simplified by dividing numerator and denominator by 2 to get 3/4.", "source_image": "data/demo/images/fraction_simplify_01.png"}
-{"id": "kb_scatter_correlation_01", "title": "Scatter plot correlation", "content": "The points move upward as x increases, indicating positive correlation.", "source_image": "data/demo/images/scatter_correlation_01.png"}
-{"id": "kb_sine_period_01", "title": "Sine curve period", "content": "The standard sine function sin(x) has period 2*pi.", "source_image": "data/demo/images/sine_period_01.png"}
-{"id": "kb_pie_chart_share_01", "title": "Pie chart largest share", "content": "The largest pie slice is Blue and it covers 50 percent.", "source_image": "data/demo/images/pie_chart_share_01.png"}
+{"id": "kb_line_slope", "title": "Line slope", "content": "For y = mx + b, the slope is m. Use slope to answer line rate-of-change questions.", "source_image": null}
+{"id": "kb_line_intercept", "title": "Line y-intercept", "content": "For y = mx + b, the y-intercept is b, the value where x=0.", "source_image": null}
+{"id": "kb_line_intersection", "title": "Line x-axis intersection", "content": "The x-axis intersection is where y=0.", "source_image": null}
+{"id": "kb_parabola_vertex", "title": "Parabola vertex", "content": "For y=(x-h)^2+k, the vertex is (h,k).", "source_image": null}
+{"id": "kb_function_monotonic", "title": "Function monotonicity", "content": "A line with positive slope is increasing; a line with negative slope is decreasing.", "source_image": null}
+{"id": "kb_sine_period", "title": "Sine period", "content": "The standard sine curve sin(x) has period 2*pi.", "source_image": null}
+{"id": "kb_bar_max", "title": "Bar chart maximum", "content": "The maximum category is represented by the tallest bar.", "source_image": null}
+{"id": "kb_bar_min", "title": "Bar chart minimum", "content": "The minimum category is represented by the shortest bar.", "source_image": null}
+{"id": "kb_bar_difference", "title": "Bar chart difference", "content": "Difference means maximum value minus minimum value.", "source_image": null}
+{"id": "kb_bar_total", "title": "Bar chart total", "content": "The total value is the sum of all bar values.", "source_image": null}
+{"id": "kb_bar_ranking", "title": "Bar chart ranking", "content": "Ranking from largest to smallest sorts categories by descending value.", "source_image": null}
+{"id": "kb_line_chart_trend", "title": "Line chart trend", "content": "Overall increasing means values rise from the first point to the last point.", "source_image": null}
+{"id": "kb_line_chart_peak", "title": "Line chart peak", "content": "The peak value is the largest point in a line chart.", "source_image": null}
+{"id": "kb_line_chart_valley", "title": "Line chart valley", "content": "The valley value is the smallest point in a line chart.", "source_image": null}
+{"id": "kb_line_chart_growth", "title": "Line chart growth", "content": "Growth from first to last equals last value minus first value.", "source_image": null}
+{"id": "kb_pie_largest", "title": "Pie chart largest share", "content": "The largest pie slice has the greatest percentage share.", "source_image": null}
+{"id": "kb_pie_percentage", "title": "Pie chart percentage", "content": "A pie chart slice label gives the percentage for that category.", "source_image": null}
+{"id": "kb_pie_compare", "title": "Pie chart category comparison", "content": "Compare pie slices by their percentages.", "source_image": null}
+{"id": "kb_triangle_angle", "title": "Triangle angle sum", "content": "Angles in a triangle sum to 180 degrees.", "source_image": null}
+{"id": "kb_rectangle_area", "title": "Rectangle area", "content": "Rectangle area equals width times height.", "source_image": null}
+{"id": "kb_circle_area", "title": "Circle area", "content": "Circle area is pi times radius squared.", "source_image": null}
+{"id": "kb_derivative_power", "title": "Derivative power rule", "content": "The derivative of x^n is n*x^(n-1).", "source_image": null}
+{"id": "kb_fraction_simplify", "title": "Fraction simplification", "content": "Simplify a fraction by dividing numerator and denominator by their greatest common divisor.", "source_image": null}
+{"id": "kb_solve_linear", "title": "Solve linear equation", "content": "For x+a=b, subtract a from both sides to get x=b-a.", "source_image": null}
+{"id": "kb_integral_power", "title": "Simple integral", "content": "The integral of 2x is x^2 + C.", "source_image": null}
+{"id": "kb_coordinate_point", "title": "Coordinate point reading", "content": "Read a coordinate point as (x,y).", "source_image": null}
+{"id": "kb_coordinate_distance", "title": "Coordinate distance", "content": "Distance between two points is sqrt((x2-x1)^2+(y2-y1)^2).", "source_image": null}
+{"id": "kb_coordinate_midpoint", "title": "Coordinate midpoint", "content": "Midpoint equals ((x1+x2)/2,(y1+y2)/2).", "source_image": null}
+{"id": "kb_coordinate_slope", "title": "Coordinate slope", "content": "Slope between two points is (y2-y1)/(x2-x1).", "source_image": null}
+{"id": "kb_table_read", "title": "Table reading", "content": "Read a table value by locating the requested row or category.", "source_image": null}
+{"id": "kb_table_max", "title": "Table maximum", "content": "The largest table category has the highest value.", "source_image": null}
+{"id": "kb_table_compare", "title": "Table comparison", "content": "Compare table categories by their numeric values.", "source_image": null}
+{"id": "kb_table_total", "title": "Table total", "content": "The total table value is the sum of all listed values.", "source_image": null}

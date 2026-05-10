@@ -1,0 +1,46 @@
+id,image,question,task_type,difficulty,split,reference_answer,prediction,exact_match,numeric_match,keyword_coverage,retrieval_recall_at_k,latency_seconds,retrieved_ids
+formula_085_solve_equation,data/demo/images/formula_085_solve_equation.png,Solve for x: x + 2 = 6.,formula,medium,test,4,"答案：4
+依据：命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。
+备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。",1.0,1.0,0.5,1.0,0.008785333999999922,"kb_solve_linear,kb_parabola_vertex,kb_line_intercept"
+coordinate_086_midpoint,data/demo/images/coordinate_086_midpoint.png,What is the midpoint of the two marked points?,coordinate,medium,test,"(2, 1)","答案：(2, 1)
+依据：命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。
+备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。",1.0,1.0,0.6666666666666666,1.0,0.001350334000000064,"kb_coordinate_midpoint,kb_bar_total,kb_coordinate_slope"
+table_087_compare,data/demo/images/table_087_compare.png,"Which category is larger, A or C?",table,medium,test,A,"答案：A
+依据：命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。
+备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。",1.0,0.0,0.5,0.0,0.0012600410000001006,"kb_bar_max,kb_bar_min,kb_table_read"
+function_plot_088_intersection,data/demo/images/function_plot_088_intersection.png,Where does the line cross the x-axis?,function_plot,hard,test,-1,"答案：-1
+依据：命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。
+备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。",1.0,1.0,0.5,1.0,0.0011871250000001776,"kb_line_intersection,kb_line_intercept,kb_line_chart_peak"
+bar_chart_089_minimum,data/demo/images/bar_chart_089_minimum.png,Which category has the minimum value?,bar_chart,hard,test,C,"答案：C
+依据：命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。
+备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。",1.0,0.0,0.5,1.0,0.0012083749999998172,"kb_table_max,kb_bar_min,kb_bar_difference"
+line_chart_090_growth,data/demo/images/line_chart_090_growth.png,What is the growth from the first point to the last point?,line_chart,hard,test,6,"答案：6
+依据：命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。
+备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。",1.0,1.0,0.5,1.0,0.001251582999999945,"kb_line_chart_trend,kb_line_chart_growth,kb_line_chart_peak"
+pie_chart_091_compare,data/demo/images/pie_chart_091_compare.png,"Which slice is larger, Blue or Green?",pie_chart,hard,test,Blue,"答案：Blue
+依据：命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。
+备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。",1.0,0.0,0.5,0.0,0.00102562500000003,"kb_table_read,kb_pie_largest,kb_pie_percentage"
+geometry_092_distance,data/demo/images/geometry_092_distance.png,What is the distance between the two marked points?,geometry,hard,test,5,"答案：5
+依据：命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。
+备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。",1.0,1.0,0.5,1.0,0.0012399170000001458,"kb_coordinate_distance,kb_coordinate_slope,kb_line_intercept"
+formula_093_integral,data/demo/images/formula_093_integral.png,What is the integral of 2x?,formula,hard,test,x^2 + C,"答案：x^2 + C
+依据：命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。
+备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。",1.0,1.0,0.6666666666666666,1.0,0.001139500000000071,"kb_integral_power,kb_bar_total,kb_table_total"
+coordinate_094_slope,data/demo/images/coordinate_094_slope.png,What is the slope between the two marked points?,coordinate,hard,test,1,"答案：1
+依据：命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。
+备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。",1.0,1.0,0.5,1.0,0.000994291000000036,"kb_coordinate_slope,kb_line_slope,kb_coordinate_distance"
+table_095_total,data/demo/images/table_095_total.png,What is the total value in the table?,table,hard,test,23,"答案：23
+依据：命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。
+备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。",1.0,1.0,0.5,1.0,0.001093624999999987,"kb_bar_total,kb_table_total,kb_table_max"
+function_plot_096_slope,data/demo/images/function_plot_096_slope.png,What is the slope of the line?,function_plot,easy,test,-3,"答案：-3
+依据：命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。
+备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。",1.0,1.0,0.5,1.0,0.001026541000000103,"kb_line_slope,kb_line_chart_peak,kb_line_chart_valley"
+bar_chart_097_difference,data/demo/images/bar_chart_097_difference.png,What is the difference between the maximum and minimum values?,bar_chart,easy,test,9,"答案：9
+依据：命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。
+备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。",1.0,1.0,0.5,1.0,0.0010236669999998949,"kb_bar_difference,kb_bar_max,kb_bar_min"
+line_chart_098_trend,data/demo/images/line_chart_098_trend.png,What is the overall trend of the line chart?,line_chart,easy,test,overall increasing,"答案：overall increasing
+依据：命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。
+备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。",1.0,0.0,1.0,1.0,0.0010155419999999804,"kb_line_chart_peak,kb_line_chart_valley,kb_line_chart_trend"
+pie_chart_099_largest,data/demo/images/pie_chart_099_largest.png,Which slice has the largest share?,pie_chart,easy,test,"Blue, 40%","答案：Blue, 40%
+依据：命中本地 demo QA 标注；mock backend 用于工程流程验证，不代表真实视觉理解能力。
+备注：当前使用 mock backend，仅用于本地快速跑通。真实模型请使用 smolvlm backend。",1.0,1.0,1.0,1.0,0.0010221249999999849,"kb_pie_largest,kb_table_max,kb_line_chart_peak"
