@@ -57,8 +57,11 @@ LORA_ALPHA="${LORA_ALPHA:-${DEFAULT_LORA_ALPHA}}"
 LORA_DROPOUT="${LORA_DROPOUT:-${DEFAULT_LORA_DROPOUT}}"
 LEARNING_RATE="${LEARNING_RATE:-${DEFAULT_LEARNING_RATE}}"
 EVAL_LIMIT="${EVAL_LIMIT:-${DEFAULT_EVAL_LIMIT}}"
-EVAL_MAX_NEW_TOKENS="${EVAL_MAX_NEW_TOKENS:-${DEFAULT_EVAL_MAX_NEW_TOKENS}}"
+EVAL_MAX_NEW_TOKENS="${EVAL_MAX_NEW_TOKENS:-96}"
 PROMPT_STYLE="${PROMPT_STYLE:-answer_then_reason}"
+ANSWER_STYLE="${ANSWER_STYLE:-explain}"
+KNOWLEDGE_FILE="${KNOWLEDGE_FILE:-data/demo/knowledge_base.jsonl}"
+MIN_AVERAGE_ANSWER_LENGTH="${MIN_AVERAGE_ANSWER_LENGTH:-20}"
 BF16="${BF16:-true}"
 GRADIENT_CHECKPOINTING="${GRADIENT_CHECKPOINTING:-true}"
 
@@ -80,6 +83,10 @@ echo "run_mode=${RUN_MODE}"
 echo "model_name=${MODEL_NAME}"
 echo "num_samples=${NUM_SAMPLES}"
 echo "attn_implementation=${ATTN_IMPLEMENTATION}"
+echo "prompt_style=${PROMPT_STYLE}"
+echo "eval_max_new_tokens=${EVAL_MAX_NEW_TOKENS}"
+echo "answer_style=${ANSWER_STYLE}"
+echo "knowledge_file=${KNOWLEDGE_FILE}"
 
 python scripts/check_gpu_env.py --out_file "${METRICS_DIR}/env.json"
 
@@ -96,10 +103,13 @@ LORA_TRAIN_FILE="${DATA_DIR}/lora_qwen_vl_train.jsonl"
 python scripts/prepare_lora_data.py \
   --qa_file data/demo/qa_train.jsonl \
   --out_file "${LORA_TRAIN_FILE}" \
-  --answer_style explain \
-  --knowledge_file data/demo/knowledge_base.jsonl
+  --answer_style "${ANSWER_STYLE}" \
+  --knowledge_file "${KNOWLEDGE_FILE}"
 
-python scripts/inspect_lora_data.py --train_file "${LORA_TRAIN_FILE}"
+python scripts/inspect_lora_data.py \
+  --train_file "${LORA_TRAIN_FILE}" \
+  --min_average_length "${MIN_AVERAGE_ANSWER_LENGTH}" \
+  --fail_on_short
 
 BF16_ARGS=()
 if [[ "${BF16}" == "true" ]]; then
@@ -155,7 +165,7 @@ python scripts/analyze_qwen_lora_bad_cases.py \
 
 python - "${RUN_DIR}" "${RUN_MODE}" "${METRICS_DIR}/qwen_base/summary.json" \
   "${METRICS_DIR}/qwen_lora/summary.json" "${ADAPTER_DIR}/train_config.json" \
-  "${REPORT_FILE}" <<'PY'
+  "${REPORT_FILE}" "${ANSWER_STYLE}" "${METRICS_DIR}/bad_cases" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -166,6 +176,8 @@ base = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
 lora = json.loads(Path(sys.argv[4]).read_text(encoding="utf-8"))
 train_config = json.loads(Path(sys.argv[5]).read_text(encoding="utf-8"))
 report_file = Path(sys.argv[6])
+answer_style = sys.argv[7]
+bad_cases_dir = Path(sys.argv[8])
 split_counts = {}
 for split_name, split_path in {
     "train": Path("data/demo/qa_train.jsonl"),
@@ -200,10 +212,11 @@ lines = [
     f"- limit_samples: {train_config['limit_samples']}",
     f"- lora_r: {train_config['lora_r']}",
     f"- lora_alpha: {train_config['lora_alpha']}",
-        f"- attention: `{train_config['attn_implementation']}`",
-        f"- prompt_style: `{base.get('prompt_style', '')}`",
-        f"- eval max_new_tokens: {base.get('max_new_tokens', '')}",
-        f"- train samples: {split_counts['train']}",
+    f"- attention: `{train_config['attn_implementation']}`",
+    f"- prompt_style: `{base.get('prompt_style', '')}`",
+    f"- eval max_new_tokens: {base.get('max_new_tokens', '')}",
+    f"- answer_style: `{answer_style}`",
+    f"- train samples: {split_counts['train']}",
     f"- val samples: {split_counts['val']}",
     f"- test samples: {split_counts['test']}",
     "",
@@ -244,7 +257,7 @@ lines.extend(
         f"- mock test 评测：`{run_dir}/metrics/mock_test/`",
         f"- Qwen base 评测：`{run_dir}/metrics/qwen_base/`",
         f"- Qwen LoRA 评测：`{run_dir}/metrics/qwen_lora/`",
-        f"- bad case 分析：`{run_dir}/metrics/bad_cases/`",
+        f"- bad case 分析：`{bad_cases_dir}`",
         f"- LoRA adapter：`{train_config['output_dir']}`",
         f"- 训练日志：`{train_config['output_dir']}/train_log.json`",
         "",
