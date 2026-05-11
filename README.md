@@ -312,7 +312,8 @@ python -m pip install -U transformers accelerate peft trl datasets qwen-vl-utils
 python -m pip install -U numpy pandas pillow matplotlib scikit-learn pyyaml tqdm gradio pytest sentencepiece protobuf
 ```
 
-这里没有安装 `vllm` 和 `flash-attn`。如果确实需要使用虚拟环境，请确认自己知道如何在该环境中保留或安装匹配 CUDA 12.8 的 PyTorch；否则更推荐直接使用镜像环境。
+这里没有安装 `vllm` 和 `flash-attn`。如果确实需要使用虚拟环境，请确认自己知道如何在该环境中
+保留或安装匹配 CUDA 12.8 的 PyTorch；否则更推荐直接使用镜像环境。
 
 ### 一键运行
 
@@ -323,7 +324,8 @@ cd /root/autodl-tmp/projects/MathVision-Assistant
 RUN_MODE=smoke bash scripts/run_qwen_lora_gpu.sh
 ```
 
-full 模式默认生成 1000 条 demo 数据，使用 train split 中最多 1000 条样本训练，`max_steps=300`，并在不少于 100 条 test split 样本上评测 Qwen base 和 Qwen LoRA：
+full 模式默认生成 1000 条 demo 数据，使用 train split 中最多 1000 条样本训练，`max_steps=300`，
+并在不少于 100 条 test split 样本上评测 Qwen base 和 Qwen LoRA：
 
 ```bash
 cd /root/autodl-tmp/projects/MathVision-Assistant
@@ -381,7 +383,9 @@ runs/YYYYMMDD_HHMMSS/
 
 ### 已完成的 full run 记录
 
-RTX 5090 full run 实验记录已整理在 [docs/rtx5090_qwen_lora_report.md](docs/rtx5090_qwen_lora_report.md)。当前结果仍然是本地合成 demo 数据上的功能性评测，不等同于正式 benchmark。
+RTX 5090 full run 实验记录已整理在
+[docs/rtx5090_qwen_lora_report.md](docs/rtx5090_qwen_lora_report.md)。
+当前结果仍然是本地合成 demo 数据上的功能性评测，不等同于正式 benchmark。
 
 #### 第一次实验：短答退化问题
 
@@ -451,12 +455,16 @@ reports/eval_summary.md
 
 ### 评测方法
 
-当前评测指标用于原型阶段的自动化检查，重点是快速观察模型回答、数值匹配、关键词覆盖、检索召回和单样本耗时。
+当前评测指标用于原型阶段的自动化检查，重点是快速观察模型回答、数值匹配、关键词覆盖、
+检索召回和单样本耗时。
 
-- `exact_match`：对预测答案和参考答案做文本归一化后进行匹配；如果参考答案明确出现在预测中，也记为命中。
-- `numeric_match`：从预测和参考答案中抽取整数、小数、简单分数和百分比等数值，并在容差内判断是否匹配。
+- `exact_match`：对预测答案和参考答案做文本归一化后进行匹配；如果参考答案明确出现在预测中，
+  也记为命中。
+- `numeric_match`：从预测和参考答案中抽取整数、小数、简单分数和百分比等数值，并在容差内
+  判断是否匹配。
 - `keyword_coverage`：计算预测回答覆盖参考关键词的比例，用于粗略观察回答是否包含关键概念。
-- `retrieval_recall_at_k`：计算前 `k` 个检索 evidence id 对样本 `related_knowledge_ids` 的召回比例。这个指标是知识条目 / evidence 级召回，不代表最终回答一定正确。
+- `retrieval_recall_at_k`：计算前 `k` 个检索 evidence id 对样本 `related_knowledge_ids` 的召回比例。
+  这个指标是知识条目 / evidence 级召回，不代表最终回答一定正确。
 - `average_latency`：pipeline 在评测集上的单样本平均耗时，包含检索与模型推理等环节。
 
 运行：
@@ -475,11 +483,13 @@ python scripts/run_eval.py \
   --out_dir reports/mock_test
 ```
 
-`eval_summary.md` 会输出整体 summary，并按 `task_type` 生成分组汇总。`eval_results.csv` 会保留逐样本的 `task_type`、`difficulty`、`split` 字段，便于后续分析不同题型的表现。
+`eval_summary.md` 会输出整体 summary，并按 `task_type` 生成分组汇总。`eval_results.csv` 会保留
+逐样本的 `task_type`、`difficulty`、`split` 字段，便于后续分析不同题型的表现。
 
 ### 当前结果对比
 
-下面是一次历史本地评测结果，对比原始 SmolVLM-500M-Instruct 和加载 LoRA adapter 后的结果。评测数据是旧版 14 条 demo 样本，不是当前可配置规模 demo 数据上的正式结论。
+下面是一次历史本地评测结果，对比原始 SmolVLM-500M-Instruct 和加载 LoRA adapter 后的结果。
+评测数据是旧版 14 条 demo 样本，不是当前可配置规模 demo 数据上的正式结论。
 
 ```bash
 # 原始 SmolVLM
@@ -534,7 +544,8 @@ python scripts/run_eval.py \
 | retrieval_recall_at_k | 0.8667 |
 | average_latency | 0.0016s |
 
-由于 mock backend 会读取本地 demo 标注答案，这个表只能说明数据划分、检索、评测和报告生成链路正常，不能代表真实 VLM 的视觉理解能力。
+由于 mock backend 会读取本地 demo 标注答案，这个表只能说明数据划分、检索、评测和报告生成
+链路正常，不能代表真实 VLM 的视觉理解能力。
 
 ## 评测局限
 

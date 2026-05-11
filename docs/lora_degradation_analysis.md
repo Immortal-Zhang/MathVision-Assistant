@@ -86,7 +86,8 @@ RUN_MODE=smoke bash scripts/run_qwen_lora_gpu.sh
 - `exact_match` 和 `numeric_match` 是否稳定或有所改善；解释型回答下不要单独依赖 exact match。
 - `metrics/bad_cases/bad_cases.md` 中是否仍大量出现“LoRA 输出过短”。
 
-本轮结果显示短答率、数值匹配和关键词覆盖已有改善，但这只能说明当前合成 demo 流程更合理，不能直接说明模型在正式 benchmark 上提升。
+本轮结果显示短答率、数值匹配和关键词覆盖已有改善，但这只能说明当前合成 demo 流程更合理，
+不能直接说明模型在正式 benchmark 上提升。
 
 ## 不能夸大结果的说明
 
