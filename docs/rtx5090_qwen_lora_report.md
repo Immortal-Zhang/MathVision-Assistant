@@ -55,15 +55,18 @@ LoRA 后评测和自动生成报告。
 
 ### 结果分析
 
-基座模型在 test split 上的 `keyword_coverage` 为 0.9017，LoRA 后下降到 0.5533。
-这说明当前合成数据规模、训练策略、答案格式或评测方式仍需要继续改进，
-不能把这次实验表述为指标提升。
+第一轮指标变化如下：
 
-LoRA 后 `average_answer_length` 从 233.6800 下降到 3.2000，说明模型输出可能变得过短，
-存在训练格式、监督信号或 generation 配置问题。平均延迟从 1.6419 秒下降到 0.1953 秒，
-但由于输出长度明显变短，这个变化不能直接视为模型效果或推理能力提升。
+| metric | Qwen2.5-VL base | Qwen2.5-VL + LoRA | delta |
+|---|---:|---:|---:|
+| keyword_coverage | 0.9017 | 0.5533 | -0.3483 |
+| average_answer_length | 233.6800 | 3.2000 | -230.4800 |
+| average_latency_seconds | 1.6419 | 0.1953 | -1.4466 |
 
-`non_empty_rate` 在 LoRA 前后均为 1.0000，说明模型都能生成非空回答，但非空回答不代表答案正确。
+这说明当前合成数据规模、训练策略、答案格式或评测方式仍需要继续改进，不能把这次实验表述为
+指标提升。LoRA 后输出长度明显变短，所以平均延迟下降不能直接视为模型效果或推理能力提升。
+
+上表中的 `non_empty_rate` 说明模型都能生成非空回答，但非空回答不代表答案正确。
 
 ## 第二轮修复实验
 
@@ -100,11 +103,19 @@ LoRA 后 `average_answer_length` 从 233.6800 下降到 3.2000，说明模型输
 | average_answer_length | 26.7400 | 56.1100 | +29.3700 |
 | average_latency_seconds | 0.5091 | 0.7699 | +0.2608 |
 
-第二轮结果说明短答退化被明显缓解：LoRA 的 `too_short_rate` 从 0.2700 降到 0.0000，
-`average_answer_length` 从 26.7400 增加到 56.1100。同时，`numeric_match` 从 0.6000 到
-0.7600，`keyword_coverage` 从 0.4817 到 0.8650。
+第二轮关键指标变化如下：
 
-需要注意的是，`exact_match` 下降到 0.0000，主要原因是 LoRA 输出变成“答案 + 依据”的解释型格式，
+| metric | Qwen2.5-VL base | Qwen2.5-VL + LoRA | delta |
+|---|---:|---:|---:|
+| too_short_rate | 0.2700 | 0.0000 | -0.2700 |
+| average_answer_length | 26.7400 | 56.1100 | +29.3700 |
+| numeric_match | 0.6000 | 0.7600 | +0.1600 |
+| keyword_coverage | 0.4817 | 0.8650 | +0.3833 |
+| exact_match | 0.2100 | 0.0000 | -0.2100 |
+
+第二轮结果说明短答退化被明显缓解。
+
+需要注意的是，`exact_match` 的下降主要是因为 LoRA 输出变成“答案 + 依据”的解释型格式，
 而 reference answer 仍是短答案。此时完全字符串匹配不再适合作为解释型回答质量的单独指标，
 应结合 `numeric_match`、`keyword_coverage`、`too_short_rate` 和人工 bad case 分析一起看。
 

@@ -4,10 +4,10 @@
 
 上一轮 RTX 5090 full run 已经跑通 Qwen2.5-VL LoRA 训练、评测和报告生成闭环，但 LoRA 后指标没有提升：
 
-- Qwen2.5-VL base `keyword_coverage`：0.9017
-- Qwen2.5-VL + LoRA `keyword_coverage`：0.5533
-- Qwen2.5-VL base `average_answer_length`：233.6800
-- Qwen2.5-VL + LoRA `average_answer_length`：3.2000
+| metric | Qwen2.5-VL base | Qwen2.5-VL + LoRA | delta |
+|---|---:|---:|---:|
+| keyword_coverage | 0.9017 | 0.5533 | -0.3483 |
+| average_answer_length | 233.6800 | 3.2000 | -230.4800 |
 
 主要现象是 LoRA 后回答明显变短。这说明当前训练答案格式、loss mask 或 generation 配置存在问题，不能把该实验写成 LoRA 效果提升。
 
@@ -49,11 +49,18 @@
 | average_answer_length | 26.7400 | 56.1100 | +29.3700 |
 | average_latency_seconds | 0.5091 | 0.7699 | +0.2608 |
 
-本轮修复后，LoRA 的 `too_short_rate` 从 0.2700 降到 0.0000，说明短答退化现象得到缓解。
-`average_answer_length` 从 26.7400 增加到 56.1100，更符合“答案 + 一句话依据”的训练目标。
-`numeric_match` 和 `keyword_coverage` 也有所改善。
+本轮修复后的关键指标变化如下：
 
-`exact_match` 下降到 0.0000，主要是因为 LoRA 输出变成解释型格式，而 reference answer
+| metric | Qwen2.5-VL base | Qwen2.5-VL + LoRA | delta |
+|---|---:|---:|---:|
+| too_short_rate | 0.2700 | 0.0000 | -0.2700 |
+| average_answer_length | 26.7400 | 56.1100 | +29.3700 |
+| numeric_match | 0.6000 | 0.7600 | +0.1600 |
+| keyword_coverage | 0.4817 | 0.8650 | +0.3833 |
+
+这说明短答退化现象得到缓解，输出长度也更符合“答案 + 一句话依据”的训练目标。
+
+`exact_match` 的下降主要是因为 LoRA 输出变成解释型格式，而 reference answer
 仍是短答案。对于这种输出，完全字符串匹配不再适合作为单独评价指标，需要结合数值匹配、
 关键词覆盖、短答率和 bad case 分析一起看。
 
@@ -86,8 +93,15 @@ RUN_MODE=smoke bash scripts/run_qwen_lora_gpu.sh
 - `exact_match` 和 `numeric_match` 是否稳定或有所改善；解释型回答下不要单独依赖 exact match。
 - `metrics/bad_cases/bad_cases.md` 中是否仍大量出现“LoRA 输出过短”。
 
-本轮结果显示短答率、数值匹配和关键词覆盖已有改善，但这只能说明当前合成 demo 流程更合理，
-不能直接说明模型在正式 benchmark 上提升。
+本轮主要诊断指标如下：
+
+| diagnostic metric | before | after | change |
+|---|---:|---:|---:|
+| too_short_rate | 0.2700 | 0.0000 | -0.2700 |
+| numeric_match | 0.6000 | 0.7600 | +0.1600 |
+| keyword_coverage | 0.4817 | 0.8650 | +0.3833 |
+
+这些结果只能说明当前合成 demo 流程更合理，不能直接说明模型在正式 benchmark 上提升。
 
 ## 不能夸大结果的说明
 
